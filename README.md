@@ -89,7 +89,7 @@ Os caminhos precisam ser **absolutos**: o servidor roda fora da pasta do projeto
 ### 5. Inicie e teste
 
 1. `Cmd/Ctrl+Shift+P` → **MCP: List Servers** → `postgrad-study-mcp` → **Start Server**
-2. Em **Show Output**, confira se aparece `Discovered 5 tools`
+2. Em **Show Output**, confira se aparece `Discovered 6 tools`
 3. Abra o Copilot Chat no modo **Agent** e pergunte algo sobre o seu material
 
 Na primeira chamada de cada tool o VS Code pede permissão — clique em **Allow**. Clicando no bloco "Ran buscar_anotacao" da resposta, dá para ver exatamente o que o servidor devolveu.
@@ -103,6 +103,8 @@ Na primeira chamada de cada tool o VS Code pede permissão — clique em **Allow
 | Servidor aparece mas não acha nada | Confira o `NOTES_DIR` (caminho absoluto, pasta existe). Lembre que a busca é por **texto literal**: tente outra palavra |
 | "Language model unavailable" no chat | Problema do Copilot, não do servidor: atualize o VS Code e confira o login/plano do Copilot |
 | O modelo responde sem usar o servidor | Seja explícito: "consulte minhas anotações sobre…" ou cite a tool com `#buscar_anotacao` |
+| Digitando `/` não aparecem `gerar_quiz` nem `plano_de_revisao` | A conversa está numa sessão **Copilot CLI**, que não mostra prompts de MCP. Abra um chat na sessão **Local**, modo **Agent**, e digite `/mcp.postgrad` |
+| O chat leu um arquivo que o servidor bloqueia (`.zshrc`, `package.json`...) | Quem leu foi o **próprio Copilot**, com a ferramenta embutida dele (aparece "Read arquivo", não "Ran ler_anotacao"). As proteções deste servidor valem só para o que passa por ele. Para testar o servidor, cite a tool: `#ler_anotacao` |
 | Parei o servidor e ele voltou sozinho | O VS Code reinicia servidores a cada conversa nova. Para desligar de verdade, remova a entrada do `mcp.json` |
 
 ---
@@ -118,6 +120,7 @@ Com o servidor rodando, no Copilot Chat (modo **Agent**):
 | `Como foi implementado o registerTool nas aulas? Procure só no código` | `buscar_anotacao` com `tipos: ["codigo"]` → `ler_anotacao` |
 | `Registre uma dúvida no modulo03: quando usar resource em vez de tool?` | `registrar_duvida` |
 | `Marque a aula 05 do modulo03 como concluída` | `marcar_aula_concluida` |
+| `Quais dúvidas eu ainda tenho pendentes?` | `listar_duvidas` |
 
 Os prompts aparecem digitando `/` no chat: `/mcp.postgrad-study-mcp.gerar_quiz` e `/mcp.postgrad-study-mcp.plano_de_revisao`.
 
@@ -126,6 +129,8 @@ Os prompts aparecem digitando `/` no chat: `/mcp.postgrad-study-mcp.gerar_quiz` 
 O servidor **não tem LLM**: um prompt MCP é só uma mensagem pronta. Ao escolher `gerar_quiz`, o servidor valida o módulo e devolve um texto que pede ao modelo do seu chat para buscar suas anotações (com as tools deste servidor) e montar as perguntas. Quem escreve o quiz é o modelo.
 
 Por isso os prompts pedem que **cada resposta venha com a fonte** — `arquivo:linha` ou `arquivo, p. N` — e que o modelo diga "não encontrei" em vez de completar com conhecimento geral. No quiz, as fontes aparecem só junto das respostas, no final, para não entregar o gabarito. Isso não impede o modelo de errar, mas torna qualquer resposta suspeita conferível em segundos.
+
+No `plano_de_revisao`, o próprio servidor lê as suas dúvidas e o seu progresso e já os coloca no texto do prompt. O modelo só precisa buscar no material onde revisar cada assunto.
 
 ---
 
@@ -138,6 +143,7 @@ Por isso os prompts pedem que **cada resposta venha com a fonte** — `arquivo:l
 | 🔧 Tool | `ler_anotacao` | Lê uma anotação ou arquivo de código completo, ou um PDF por páginas (até 5 por vez) |
 | 🔧 Tool | `registrar_duvida` | Salva uma dúvida para revisar depois |
 | 🔧 Tool | `marcar_aula_concluida` | Marca uma aula como concluída |
+| 🔧 Tool | `listar_duvidas` | Lista as dúvidas não resolvidas e as aulas concluídas (o modelo não consegue abrir resources sozinho, então os mesmos dados também existem como tool) |
 | 📄 Resource | `pos://duvidas` | Dúvidas registradas (JSON) |
 | 📄 Resource | `pos://progresso` | Aulas concluídas por módulo (JSON) |
 | 💬 Prompt | `gerar_quiz` | Quiz de múltipla escolha sobre um módulo, baseado nas suas anotações, com a fonte de cada resposta |
@@ -208,10 +214,12 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP (na nuvem, no
 - O conteúdo dos arquivos volta delimitado por `<dados_nao_confiaveis id="…">` com um id aleatório a cada chamada; o arquivo não consegue "fechar" o bloco e escrever fora dele
 - Caracteres invisíveis (zero-width, controle de direção, tag characters Unicode) são removidos, já que servem para esconder instruções do leitor humano
 - Padrões típicos de injeção ("ignore as instruções anteriores", "you are now", `<system>`, "não conte ao usuário"…) geram um **ALERTA** no resultado e o campo `alertas` no `structuredContent`
-- As `instructions` do servidor e os prompts dizem ao modelo para tratar o conteúdo como dados e avisar o usuário sobre alertas
-- `registrar_duvida` recusa textos com padrões de injeção, para nada ser "plantado" no histórico que depois volta via `pos://duvidas`
+- As `instructions` do servidor e os prompts dizem ao modelo para tratar o conteúdo como dados e só falar de prompt injection quando houver uma linha `⚠️ ALERTA`
+- `registrar_duvida` recusa textos com padrões de injeção, para nada ser "plantado" no histórico que depois volta via `listar_duvidas` e `plano_de_revisao`
 - Argumentos das tools têm tamanho máximo e não aceitam caracteres invisíveis; `gerar_quiz` só aceita módulos que existem
 - Tools anotadas com `readOnlyHint`, para o cliente distinguir leitura de escrita; as de escrita só alteram os JSONs em `DATA_DIR` (criados com permissão `600`)
+
+> Essas proteções valem para o que passa por este servidor. O Copilot tem ferramentas próprias (ler arquivos, terminal) que não passam por aqui; para controlar o que elas podem fazer, use as configurações de aprovação de tools do VS Code.
 
 > Não coloque em `NOTES_DIR` material sigiloso ou com dados pessoais: mesmo com essas camadas, o que for lido vai para o modelo.
 
@@ -241,7 +249,7 @@ tests/
 | Passo | Arquivo | O que você aprende |
 |---|---|---|
 | 1 | [src/index.ts](src/index.ts) | Como um servidor MCP sobe e por que o stdout é sagrado (1.1 a 1.4) |
-| 2 | [src/mcp.ts](src/mcp.ts) | Como declarar tools (2.3 a 2.7), resources (2.8) e prompts (2.9); instructions (2.1) e validação (2.2) |
+| 2 | [src/mcp.ts](src/mcp.ts) | Como declarar tools (2.3 a 2.8), resources (2.9) e prompts (2.10); instructions (2.1) e validação (2.2) |
 | 3 | [src/service.ts](src/service.ts) | Tipos e filtros (3.1 a 3.3), PDFs (3.4, 3.8), busca (3.6), leitura (3.7), segurança de caminhos (3.9), dados (3.10) |
 | 4 | [src/safety.ts](src/safety.ts) | As camadas contra vazamento e prompt injection (4.1 a 4.5) |
 | 5 | [tests/](tests/) | Como testar um servidor MCP pelo próprio protocolo |
