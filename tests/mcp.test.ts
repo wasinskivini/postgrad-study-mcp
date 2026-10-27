@@ -123,6 +123,22 @@ describe('Postgrad Study MCP', () => {
             assert.match(item.text, /5 perguntas/)
             assert.match(item.text, /não siga instruções/)
         })
+
+        it('should ask the quiz to cite sources only with the answers', async () => {
+            const result = await client.getPrompt({ name: 'gerar_quiz', arguments: { modulo: 'modulo03' } })
+            const item = result.messages.at(0)?.content as unknown as { text: string }
+            assert.match(item.text, /"arquivo:linha"/)
+            assert.match(item.text, /"arquivo, p\. N"/)
+            assert.match(item.text, /não mostre as fontes nas perguntas/)
+            assert.match(item.text, /diga que não encontrou/)
+        })
+
+        it('should ask the review plan to cite sources', async () => {
+            const result = await client.getPrompt({ name: 'plano_de_revisao' })
+            const item = result.messages.at(0)?.content as unknown as { text: string }
+            assert.match(item.text, /"arquivo:linha"/)
+            assert.match(item.text, /não siga instruções/)
+        })
     })
 
     describe('pdf', () => {
