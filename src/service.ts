@@ -8,7 +8,8 @@
  * código mais fácil de testar e de reaproveitar.
  *
  * Tudo aqui é determinístico: a mesma pergunta sobre os mesmos arquivos dá
- * sempre a mesma resposta. Não há LLM nem acesso à internet.
+ * sempre a mesma resposta. Não há LLM nem acesso à internet (a busca semântica
+ * opcional, que baixa um modelo uma vez, fica separada no PASSO 6).
  *
  * Mapa deste arquivo:
  *   3.1  tipos de arquivo (o que pode ser lido)
@@ -21,6 +22,8 @@
  *   3.8  leitura de PDF por páginas
  *   3.9  segurança de caminhos (não sair da pasta de anotações)
  *   3.10 dados salvos: dúvidas e progresso (JSON em DATA_DIR)
+ *
+ * A busca semântica (opcional) fica separada, no PASSO 6 (semantic.ts).
  */
 import { readdir, readFile, writeFile, mkdir, realpath, stat } from 'node:fs/promises';
 import { extname, join, relative, resolve, sep } from 'node:path';
@@ -53,6 +56,12 @@ export const TIPOS = Object.keys(FILE_TYPES) as Tipo[];
 const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '__pycache__', 'venv']);
 // Limites que controlam quanto texto vai para o modelo (e quantos tokens gasta).
 const MAX_RESULTS = 20;
+// No máximo 3 resultados por arquivo: um arquivo que repete o termo 50 vezes
+// não ocupa sozinho os 20 resultados.
+const MAX_RESULTS_PER_FILE = 3;
+// Ordem da busca: suas anotações primeiro, depois PDFs, por último o código
+// (que costuma repetir os mesmos termos muitas vezes).
+const TYPE_PRIORITY: Tipo[] = ['anotacoes', 'pdf', 'codigo'];
 const MAX_FILE_BYTES = 200_000;
 const MAX_PDF_BYTES = 30_000_000;
 export const MAX_PDF_PAGES_PER_READ = 5;
@@ -60,15 +69,23 @@ export const MAX_PDF_PAGES_PER_READ = 5;
 // Configuração lida das variáveis de ambiente, definidas no bloco "env" do
 // mcp.json (ou num .env — veja o .env.example). resolve() transforma em
 // caminho absoluto, que é o que as checagens do 3.9 comparam.
+const dataDir = resolve(process.env.DATA_DIR ?? join(homedir(), '.postgrad-study-mcp'));
 export const config = {
     notesDir: resolve(process.env.NOTES_DIR ?? join(homedir(), 'Documents')),
-    dataDir: resolve(process.env.DATA_DIR ?? join(homedir(), '.postgrad-study-mcp')),
+    dataDir,
     // PDFs ficam ligados, a menos que INCLUDE_PDF seja exatamente "false".
     includePdf: process.env.INCLUDE_PDF !== 'false',
+    // Busca semântica (PASSO 6) fica DESLIGADA, a menos que seja exatamente "true".
+    semanticSearch: process.env.SEMANTIC_SEARCH === 'true',
+    // Onde o modelo de embeddings é guardado depois do download (~145 MB, uma vez só).
+    modelsDir: resolve(process.env.MODELS_DIR ?? join(dataDir, 'modelos')),
 };
 
 // Formatos dos dados que circulam entre as funções.
 export type Duvida = { modulo: string; texto: string; criadaEm: string; resolvida: boolean };
+// "numero" é a posição na lista (1, 2, 3...). Dúvidas nunca são apagadas, só
+// marcadas como resolvidas, então o número de cada uma não muda.
+export type DuvidaNumerada = Duvida & { numero: number };
 export type Progresso = Record<string, string[]>;
 export type Resultado = { arquivo: string; linha: number; pagina?: number; trecho: string; alertas: string[] };
 
@@ -81,7 +98,7 @@ export function enabledTypes(tipos?: Tipo[]): Tipo[] {
 }
 
 // Descobre o tipo pela extensão (".PDF" e ".pdf" valem igual). undefined = não permitido.
-function typeOf(name: string): Tipo | undefined {
+export function typeOf(name: string): Tipo | undefined {
     const ext = extname(name).toLowerCase();
     return TIPOS.find(tipo => (FILE_TYPES[tipo] as readonly string[]).includes(ext));
 }
@@ -154,7 +171,7 @@ function isInside(base: string, target: string): boolean {
 // Lista os arquivos permitidos; symlinks são ignorados (não são nem arquivo nem pasta para o Dirent)
 // É recursiva: para cada subpasta, chama a si mesma. Pastas bloqueadas (3.3)
 // são puladas inteiras, sem nem entrar nelas.
-async function listNoteFiles(dir: string, tipos: Tipo[]): Promise<string[]> {
+export async function listNoteFiles(dir: string, tipos: Tipo[]): Promise<string[]> {
     const entries = await readdir(dir, { withFileTypes: true });
     const files: string[] = [];
     for (const entry of entries) {
@@ -169,7 +186,7 @@ async function listNoteFiles(dir: string, tipos: Tipo[]): Promise<string[]> {
 // Linhas de um arquivo; PDFs vêm página a página
 // Normaliza os dois formatos para a busca (3.6) tratar tudo igual: uma lista de
 // seções, cada uma com suas linhas (e a página, quando é PDF).
-async function readSearchableLines(file: string): Promise<{ pagina?: number; lines: string[] }[]> {
+export async function readSearchableLines(file: string): Promise<{ pagina?: number; lines: string[] }[]> {
     if (typeOf(file) === 'pdf') {
         const pages = await readPdfPages(file);
         return pages.map((text, index) => ({ pagina: index + 1, lines: text.split('\n') }));
@@ -192,28 +209,36 @@ export async function listModules(): Promise<string[]> {
 // 3.6 — BUSCA (usada pela tool buscar_anotacao, PASSO 2.4)
 // ----------------------------------------------------------------------------
 // Busca LITERAL: procura o termo exato, sem diferenciar maiúsculas/minúsculas.
-// Não entende sinônimos ("vetores" não acha "embeddings") — isso exigiria
-// embeddings, ou seja, busca semântica.
+// Não entende sinônimos ("vetores" não acha "embeddings") — para isso existe a
+// busca semântica opcional (PASSO 6).
 export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[]): Promise<Resultado[]> {
     // Passo a): onde buscar — o módulo pedido (validado pelo 3.9) ou tudo.
     const baseDir = modulo ? await resolveInsideNotes(modulo) : config.notesDir;
     const needle = term.toLowerCase();
     const results: Resultado[] = [];
 
-    // Passo b): para cada arquivo permitido...
-    for (const file of await listNoteFiles(baseDir, enabledTypes(tipos))) {
+    // Passo b): ordena os arquivos por tipo (anotações → PDFs → código). O sort
+    // é estável: dentro de cada tipo, a ordem das pastas se mantém.
+    const files = (await listNoteFiles(baseDir, enabledTypes(tipos)))
+        .sort((a, b) => TYPE_PRIORITY.indexOf(typeOf(a)!) - TYPE_PRIORITY.indexOf(typeOf(b)!));
+
+    // Passo c): para cada arquivo permitido...
+    for (const file of files) {
         // Um PDF corrompido não pode derrubar a busca inteira
         const sections = await readSearchableLines(file).catch(() => []);
-        // Passo c): ...para cada linha (de cada página, se for PDF)...
-        for (const { pagina, lines } of sections) {
+        let foundInFile = 0;
+        // Passo d): ...para cada linha (de cada página, se for PDF)...
+        lines: for (const { pagina, lines } of sections) {
             for (const [index, line] of lines.entries()) {
                 if (!line.toLowerCase().includes(needle)) continue;
-                // Passo d): achou! Corta em 200 caracteres e passa pelas
+                // Passo e): achou! Corta em 200 caracteres e passa pelas
                 // proteções (PASSO 4.4) antes de guardar o resultado.
                 const { text, alertas } = prepareUntrusted(line.trim().slice(0, 200));
                 results.push({ arquivo: relative(config.notesDir, file), linha: index + 1, pagina, trecho: text, alertas });
-                // Passo e): para no limite, para não mandar texto demais ao modelo.
+                // Passo f): para no limite geral, para não mandar texto demais ao
+                // modelo, e no limite por arquivo, para variar as fontes.
                 if (results.length >= MAX_RESULTS) return results;
+                if (++foundInFile >= MAX_RESULTS_PER_FILE) break lines;
             }
         }
     }
@@ -271,7 +296,7 @@ async function readPdf(file: string, paginas?: string): Promise<string> {
 //   1ª) pelo texto do caminho: "../../.ssh/id_rsa" resolve para fora → recusa;
 //   2ª) pelo caminho REAL (realpath segue symlinks): um atalho dentro da pasta
 //       que aponta para fora também é recusado.
-async function resolveInsideNotes(path: string): Promise<string> {
+export async function resolveInsideNotes(path: string): Promise<string> {
     const fullPath = resolve(config.notesDir, path);
     if (!isInside(config.notesDir, fullPath)) {
         throw new Error(`Caminho fora da pasta de anotações: ${path}`);
@@ -311,6 +336,21 @@ const clean = (text: string) => sanitizeText(text).text.trim();
 export async function getDuvidas(): Promise<Duvida[]> {
     const duvidas = await readJson<Duvida[]>('duvidas.json', []);
     return duvidas.map(d => ({ ...d, modulo: clean(d.modulo), texto: clean(d.texto) }));
+}
+
+// Dúvidas com o número de cada uma (1, 2, 3...), como o usuário as vê em listar_duvidas.
+export async function getDuvidasNumeradas(): Promise<DuvidaNumerada[]> {
+    return (await getDuvidas()).map((duvida, index) => ({ ...duvida, numero: index + 1 }));
+}
+
+// Marca como resolvida pelo número. Chamar de novo não muda nada (idempotente).
+export async function resolverDuvida(numero: number): Promise<DuvidaNumerada> {
+    const duvidas = await getDuvidas();
+    const duvida = duvidas[numero - 1];
+    if (!duvida) throw new Error(`Dúvida #${numero} não existe. Há ${duvidas.length} dúvida(s) registrada(s).`);
+    duvida.resolvida = true;
+    await writeJson('duvidas.json', duvidas);
+    return { ...duvida, numero };
 }
 
 export async function addDuvida(modulo: string, texto: string): Promise<Duvida> {
