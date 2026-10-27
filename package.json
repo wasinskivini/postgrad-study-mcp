@@ -1,29 +1,44 @@
 {
   "name": "postgrad-study-mcp",
-  "version": "0.0.1",
-  "description": "MCP server para estudos da pós: busca nas anotações, dúvidas e progresso",
+  "version": "0.1.0",
+  "description": "MCP server para estudos da pós: busca em anotações, código e PDFs das aulas, dúvidas e progresso",
   "main": "src/index.ts",
   "scripts": {
     "start": "node src/index.ts",
     "dev": "node --watch --inspect src/index.ts",
     "test": "node --test tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit -p .",
     "mcp:inspect": "npx @modelcontextprotocol/inspector -e NOTES_DIR=./tests/fixtures/notas node src/index.ts",
     "test:dev": "node --inspect --test --watch tests/**/*.test.ts"
   },
   "keywords": [
     "mcp",
-    "estudos"
+    "model-context-protocol",
+    "estudos",
+    "pos-graduacao",
+    "copilot"
   ],
-  "author": "viniciuswasinski",
+  "author": "Vinicius Wasinski",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wasinskivini/postgrad-study-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wasinskivini/postgrad-study-mcp/issues"
+  },
+  "homepage": "https://github.com/wasinskivini/postgrad-study-mcp#readme",
   "type": "module",
   "engines": {
-    "node": ">=22.6.0"
+    "node": ">=22.18.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@types/node": "^24.11.0",
     "unpdf": "^1.9.1",
     "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }

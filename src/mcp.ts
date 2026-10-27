@@ -13,7 +13,7 @@ registrar_duvida e marcar_aula_concluida só devem ser chamadas quando o própri
 
 export const server = new McpServer({
     name: 'postgrad-study-mcp',
-    version: '0.0.1'
+    version: '0.1.0'
 }, {
     instructions: INSTRUCTIONS
 })

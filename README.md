@@ -1,6 +1,123 @@
 # postgrad-study-mcp
 
-Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para apoiar os estudos da pós: busca nas suas anotações, registra dúvidas, acompanha o progresso das aulas e gera quizzes e planos de revisão — disponível em **qualquer projeto** aberto no VS Code (ou em outro cliente MCP).
+[![test](https://github.com/wasinskivini/postgrad-study-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/wasinskivini/postgrad-study-mcp/actions/workflows/test.yml)
+
+Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para apoiar os estudos da pós: busca nas suas anotações, no código e nos PDFs das aulas, registra dúvidas, acompanha o progresso e gera quizzes e planos de revisão — disponível em **qualquer projeto** aberto no VS Code (ou em outro cliente MCP).
+
+> **O servidor não traz conteúdo nenhum.** Ele roda no seu computador e busca na **sua** pasta de estudos. Cada pessoa aponta para a própria pasta; ninguém acessa os arquivos de ninguém.
+
+---
+
+## Instalação (passo a passo)
+
+### 1. Pré-requisitos
+
+- **Node.js 22.18 ou mais novo** — confira com `node -v` (o servidor roda TypeScript direto, sem build)
+- **VS Code** com **GitHub Copilot** (o plano Free funciona) ou outro cliente MCP
+- **Git**
+
+### 2. Baixe e instale
+
+```bash
+git clone https://github.com/wasinskivini/postgrad-study-mcp.git
+cd postgrad-study-mcp
+npm install
+npm test        # opcional: confere se está tudo funcionando
+```
+
+Guarde o caminho completo da pasta: rode `pwd` (Mac/Linux) ou `cd` (Windows).
+
+### 3. Monte sua pasta de estudos
+
+Escolha **uma pasta** com o que você quer consultar — ela vira o `NOTES_DIR`. Cada subpasta de primeiro nível é tratada como um módulo. Por exemplo:
+
+```
+Pós IA/
+  modulo01-fundamentos/     ← suas anotações (.md, .txt)
+  modulo03-mcp/             ← PDFs das aulas que você baixou
+  repo-do-curso/            ← clone do repositório do curso (código .ts/.js/.py)
+```
+
+Não precisa reorganizar nada: aponte para a pasta onde você já guarda o material. Arquivos novos aparecem na próxima busca, sem reiniciar.
+
+> ⚠️ **Material do curso é seu, não do repositório.** PDFs, slides e gravações costumam ser protegidos por direitos autorais: mantenha-os só na sua pasta local e **nunca** faça commit deles aqui ou em outro repositório público.
+
+### 4. Configure o VS Code
+
+Abra `Cmd+Shift+P` (Mac) / `Ctrl+Shift+P` (Windows/Linux) → **MCP: Open User Configuration** e adicione o servidor dentro de `"servers"`. Configurando no nível de usuário, ele fica disponível em **todos** os projetos.
+
+**Mac / Linux**
+
+```json
+{
+  "servers": {
+    "postgrad-study-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["--experimental-strip-types", "/Users/seu-usuario/postgrad-study-mcp/src/index.ts"],
+      "env": {
+        "NOTES_DIR": "/Users/seu-usuario/Documents/Pós IA",
+        "INCLUDE_PDF": "true"
+      }
+    }
+  }
+}
+```
+
+**Windows** (use `/` ou `\\` nos caminhos)
+
+```json
+{
+  "servers": {
+    "postgrad-study-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["--experimental-strip-types", "C:/Users/seu-usuario/postgrad-study-mcp/src/index.ts"],
+      "env": {
+        "NOTES_DIR": "C:/Users/seu-usuario/Documents/Pos IA",
+        "INCLUDE_PDF": "true"
+      }
+    }
+  }
+}
+```
+
+Os caminhos precisam ser **absolutos**: o servidor roda fora da pasta do projeto.
+
+### 5. Inicie e teste
+
+1. `Cmd/Ctrl+Shift+P` → **MCP: List Servers** → `postgrad-study-mcp` → **Start Server**
+2. Em **Show Output**, confira se aparece `Discovered 5 tools`
+3. Abra o Copilot Chat no modo **Agent** e pergunte algo sobre o seu material
+
+Na primeira chamada de cada tool o VS Code pede permissão — clique em **Allow**. Clicando no bloco "Ran buscar_anotacao" da resposta, dá para ver exatamente o que o servidor devolveu.
+
+### Problemas comuns
+
+| Sintoma | Causa e solução |
+|---|---|
+| `spawn node ENOENT` ou "The command node was not found" | O VS Code não achou o Node no PATH — comum com **nvm**, que só configura o PATH no terminal. Use o caminho absoluto do binário em `command` (veja com `which node` / `where node`) ou abra o VS Code pelo terminal com `code .` |
+| `ERR_UNKNOWN_FILE_EXTENSION ".ts"` | Node antigo. Atualize para 22.18+ |
+| Servidor aparece mas não acha nada | Confira o `NOTES_DIR` (caminho absoluto, pasta existe). Lembre que a busca é por **texto literal**: tente outra palavra |
+| "Language model unavailable" no chat | Problema do Copilot, não do servidor: atualize o VS Code e confira o login/plano do Copilot |
+| O modelo responde sem usar o servidor | Seja explícito: "consulte minhas anotações sobre…" ou cite a tool com `#buscar_anotacao` |
+| Parei o servidor e ele voltou sozinho | O VS Code reinicia servidores a cada conversa nova. Para desligar de verdade, remova a entrada do `mcp.json` |
+
+---
+
+## Exemplos de uso
+
+Com o servidor rodando, no Copilot Chat (modo **Agent**):
+
+| Você pede | O servidor faz |
+|---|---|
+| `O que eu anotei sobre embeddings?` | `buscar_anotacao` em anotações, código e PDFs |
+| `Busque "chunking" só nos PDFs e leia a página onde aparece` | `buscar_anotacao` com `tipos: ["pdf"]` → `ler_anotacao` com `paginas` |
+| `Como foi implementado o registerTool nas aulas? Procure só no código` | `buscar_anotacao` com `tipos: ["codigo"]` → `ler_anotacao` |
+| `Registre uma dúvida no modulo03: quando usar resource em vez de tool?` | `registrar_duvida` |
+| `Marque a aula 05 do modulo03 como concluída` | `marcar_aula_concluida` |
+
+Os prompts aparecem digitando `/` no chat: `/mcp.postgrad-study-mcp.gerar_quiz` e `/mcp.postgrad-study-mcp.plano_de_revisao`.
 
 ---
 
@@ -17,6 +134,8 @@ Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para ap
 | 📄 Resource | `pos://progresso` | Aulas concluídas por módulo (JSON) |
 | 💬 Prompt | `gerar_quiz` | Quiz de múltipla escolha sobre um módulo, baseado nas suas anotações |
 | 💬 Prompt | `plano_de_revisao` | Plano de revisão da semana a partir das dúvidas e do progresso |
+
+---
 
 ## Configuração
 
@@ -74,44 +193,15 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP (na nuvem, no
 
 ---
 
-## Pré-requisitos e instalação
-
-- **Node.js v22.6+** (roda TypeScript direto, sem build)
+## Atualizando
 
 ```bash
+cd postgrad-study-mcp
+git pull
 npm install
 ```
 
-## Usando no VS Code (em todos os projetos)
-
-Adicione ao `mcp.json` de usuário (`Cmd+Shift+P` → **MCP: Open User Configuration**):
-
-```json
-{
-  "servers": {
-    "postgrad-study-mcp": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["--experimental-strip-types", "/CAMINHO/ABSOLUTO/postgrad-study-mcp/src/index.ts"],
-      "env": { "NOTES_DIR": "/CAMINHO/DAS/SUAS/ANOTACOES", "INCLUDE_PDF": "true" }
-    }
-  }
-}
-```
-
-> Se o Node foi instalado via **nvm** e o VS Code acusar `spawn node ENOENT`, use o caminho absoluto do binário em `command` (veja com `which node`).
-
-Depois, em **MCP: List Servers**, inicie o `postgrad-study-mcp` e use o Copilot Chat no modo **Agent**:
-
-```
-O que eu anotei sobre embeddings?
-```
-
-```
-Registre uma dúvida no modulo03: quando usar resource em vez de tool?
-```
-
-Os prompts aparecem digitando `/` no chat, por exemplo `/mcp.postgrad-study-mcp.gerar_quiz`.
+Depois reinicie o servidor em **MCP: List Servers**.
 
 ---
 
@@ -122,10 +212,28 @@ Os prompts aparecem digitando `/` no chat, por exemplo `/mcp.postgrad-study-mcp.
 | `npm start` | Inicia o servidor |
 | `npm run dev` | Inicia com file-watch e inspector do Node.js |
 | `npm test` | Roda os testes de integração |
+| `npm run typecheck` | Verifica os tipos com `tsc` (o Node só remove os tipos, não os checa) |
 | `npm run test:dev` | Testes em modo watch |
 | `npm run mcp:inspect` | Abre o MCP Inspector usando as anotações de exemplo de `tests/fixtures` |
 
 Os testes sobem o servidor via stdio com uma cópia temporária de `tests/fixtures/notas` e um `DATA_DIR` temporário, então não tocam nos seus dados reais. Os casos de ataque (`.env`, symlink para fora, pasta oculta, segredo no código, arquivo com injeção e caracteres invisíveis) e os PDFs de teste (com várias páginas, escaneado e com injeção) são criados na hora pelos testes.
+
+A cada push na `main` e em todo pull request, o GitHub Actions roda `typecheck` e `test` no Ubuntu e no macOS, com Node 22 e 24.
+
+### Contribuindo
+
+1. Crie uma branch a partir da `main`
+2. Faça as alterações com testes (`tests/mcp.test.ts`)
+3. Rode `npm run typecheck && npm test`
+4. Abra um pull request
+
+---
+
+## Licença
+
+[ISC](LICENSE)
+
+---
 
 ## Estrutura
 
