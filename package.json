@@ -10,7 +10,10 @@
     "mcp:inspect": "npx @modelcontextprotocol/inspector -e NOTES_DIR=./tests/fixtures/notas node src/index.ts",
     "test:dev": "node --inspect --test --watch tests/**/*.test.ts"
   },
-  "keywords": ["mcp", "estudos"],
+  "keywords": [
+    "mcp",
+    "estudos"
+  ],
   "author": "viniciuswasinski",
   "license": "ISC",
   "type": "module",
@@ -20,6 +23,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@types/node": "^24.11.0",
+    "unpdf": "^1.9.1",
     "zod": "^3.25.76"
   }
 }
