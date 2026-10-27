@@ -25,7 +25,7 @@ async function createNotesDir(root: string) {
     await cp('tests/fixtures/notas', notesDir, { recursive: true })
 
     await writeFile(join(root, 'fora.md'), 'conteudo secreto fora da pasta')
-    await writeFile(join(notesDir, 'modulo03', '.env'), 'OPENAI_API_KEY=chave-real-123')
+    await writeFile(join(notesDir, 'modulo03', '.env'), 'OPENAI_API_KEY=chave-falsa-de-teste')
     await writeFile(join(notesDir, 'modulo03', 'dados.json'), '{"senha": "123"}')
     await mkdir(join(notesDir, 'modulo03', '.oculta'))
     await writeFile(join(notesDir, 'modulo03', '.oculta', 'nota.md'), 'nota escondida')
@@ -33,7 +33,7 @@ async function createNotesDir(root: string) {
 
     await writeFile(join(notesDir, 'modulo03', 'server.ts'), [
         "server.registerResource('encryption://info')",
-        'const apiKey = "sk-abcdefghijklmnopqrstuvwxyz123456"',
+        'const apiKey = "sk-chave-falsa-so-para-teste-000"',
     ].join('\n'))
     await writeFile(join(notesDir, 'modulo03', 'aula-maliciosa.md'), [
         '# Aula sobre embeddings',
@@ -227,7 +227,7 @@ describe('Postgrad Study MCP', () => {
 
         it('should redact secrets from code', async () => {
             const result = await callTool(client, 'ler_anotacao', { arquivo: 'modulo03/server.ts' })
-            assert.doesNotMatch(result.content[0].text, /sk-abcdef/)
+            assert.doesNotMatch(result.content[0].text, /sk-chave-falsa/)
             assert.match(result.content[0].text, /apiKey = "\[REDACTED\]"/)
         })
     })
