@@ -121,6 +121,12 @@ Com o servidor rodando, no Copilot Chat (modo **Agent**):
 
 Os prompts aparecem digitando `/` no chat: `/mcp.postgrad-study-mcp.gerar_quiz` e `/mcp.postgrad-study-mcp.plano_de_revisao`.
 
+### Como o quiz e o plano de revisão funcionam
+
+O servidor **não tem LLM**: um prompt MCP é só uma mensagem pronta. Ao escolher `gerar_quiz`, o servidor valida o módulo e devolve um texto que pede ao modelo do seu chat para buscar suas anotações (com as tools deste servidor) e montar as perguntas. Quem escreve o quiz é o modelo.
+
+Por isso os prompts pedem que **cada resposta venha com a fonte** — `arquivo:linha` ou `arquivo, p. N` — e que o modelo diga "não encontrei" em vez de completar com conhecimento geral. No quiz, as fontes aparecem só junto das respostas, no final, para não entregar o gabarito. Isso não impede o modelo de errar, mas torna qualquer resposta suspeita conferível em segundos.
+
 ---
 
 ## O que o servidor oferece
@@ -134,8 +140,8 @@ Os prompts aparecem digitando `/` no chat: `/mcp.postgrad-study-mcp.gerar_quiz` 
 | 🔧 Tool | `marcar_aula_concluida` | Marca uma aula como concluída |
 | 📄 Resource | `pos://duvidas` | Dúvidas registradas (JSON) |
 | 📄 Resource | `pos://progresso` | Aulas concluídas por módulo (JSON) |
-| 💬 Prompt | `gerar_quiz` | Quiz de múltipla escolha sobre um módulo, baseado nas suas anotações |
-| 💬 Prompt | `plano_de_revisao` | Plano de revisão da semana a partir das dúvidas e do progresso |
+| 💬 Prompt | `gerar_quiz` | Quiz de múltipla escolha sobre um módulo, baseado nas suas anotações, com a fonte de cada resposta |
+| 💬 Prompt | `plano_de_revisao` | Plano de revisão da semana a partir das dúvidas e do progresso, com a fonte de cada indicação |
 
 ---
 
