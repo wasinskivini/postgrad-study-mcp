@@ -17,12 +17,12 @@ async function readJsonResource(client: Client, uri: string) {
     return JSON.parse((contents[0] as { text: string }).text)
 }
 
-describe('Pos Estudos MCP', () => {
+describe('Postgrad Study MCP', () => {
     let client: Client
     let dataDir: string
 
     before(async () => {
-        dataDir = await mkdtemp(join(tmpdir(), 'pos-estudos-'))
+        dataDir = await mkdtemp(join(tmpdir(), 'postgrad-study-'))
         client = await createTestClient(dataDir)
     })
 

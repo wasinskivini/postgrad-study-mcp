@@ -7,7 +7,7 @@ import {
 } from "./service.ts";
 
 export const server = new McpServer({
-    name: 'pos-estudos-mcp',
+    name: 'postgrad-study-mcp',
     version: '0.0.1'
 })
 

@@ -1,4 +1,4 @@
-# pos-estudos-mcp
+# postgrad-study-mcp
 
 Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para apoiar os estudos da pós: busca nas suas anotações, registra dúvidas, acompanha o progresso das aulas e gera quizzes e planos de revisão — disponível em **qualquer projeto** aberto no VS Code (ou em outro cliente MCP).
 
@@ -23,7 +23,7 @@ Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para ap
 | Variável | Padrão | Uso |
 |---|---|---|
 | `NOTES_DIR` | `~/Documents` | Pasta raiz das anotações (cada subpasta é um módulo) |
-| `DATA_DIR` | `~/.pos-estudos-mcp` | Onde ficam `duvidas.json` e `progresso.json` |
+| `DATA_DIR` | `~/.postgrad-study-mcp` | Onde ficam `duvidas.json` e `progresso.json` |
 
 Pastas ocultas e `node_modules`, `.git`, `dist`, `build` e `coverage` são ignoradas na busca. `ler_anotacao` recusa caminhos fora de `NOTES_DIR`.
 
@@ -44,10 +44,10 @@ Adicione ao `mcp.json` de usuário (`Cmd+Shift+P` → **MCP: Open User Configura
 ```json
 {
   "servers": {
-    "pos-estudos-mcp": {
+    "postgrad-study-mcp": {
       "type": "stdio",
       "command": "node",
-      "args": ["--experimental-strip-types", "/CAMINHO/ABSOLUTO/pos-estudos-mcp/src/index.ts"],
+      "args": ["--experimental-strip-types", "/CAMINHO/ABSOLUTO/postgrad-study-mcp/src/index.ts"],
       "env": { "NOTES_DIR": "/CAMINHO/DAS/SUAS/ANOTACOES" }
     }
   }
@@ -56,7 +56,7 @@ Adicione ao `mcp.json` de usuário (`Cmd+Shift+P` → **MCP: Open User Configura
 
 > Se o Node foi instalado via **nvm** e o VS Code acusar `spawn node ENOENT`, use o caminho absoluto do binário em `command` (veja com `which node`).
 
-Depois, em **MCP: List Servers**, inicie o `pos-estudos-mcp` e use o Copilot Chat no modo **Agent**:
+Depois, em **MCP: List Servers**, inicie o `postgrad-study-mcp` e use o Copilot Chat no modo **Agent**:
 
 ```
 O que eu anotei sobre embeddings?
@@ -66,7 +66,7 @@ O que eu anotei sobre embeddings?
 Registre uma dúvida no modulo03: quando usar resource em vez de tool?
 ```
 
-Os prompts aparecem digitando `/` no chat, por exemplo `/mcp.pos-estudos-mcp.gerar_quiz`.
+Os prompts aparecem digitando `/` no chat, por exemplo `/mcp.postgrad-study-mcp.gerar_quiz`.
 
 ---
 

@@ -1,5 +1,5 @@
 {
-  "name": "pos-estudos-mcp",
+  "name": "postgrad-study-mcp",
   "version": "0.0.1",
   "description": "MCP server para estudos da pós: busca nas anotações, dúvidas e progresso",
   "main": "src/index.ts",

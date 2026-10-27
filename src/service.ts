@@ -8,7 +8,7 @@ const MAX_RESULTS = 20;
 
 export const config = {
     notesDir: resolve(process.env.NOTES_DIR ?? join(homedir(), 'Documents')),
-    dataDir: resolve(process.env.DATA_DIR ?? join(homedir(), '.pos-estudos-mcp')),
+    dataDir: resolve(process.env.DATA_DIR ?? join(homedir(), '.postgrad-study-mcp')),
 };
 
 export type Duvida = { modulo: string; texto: string; criadaEm: string; resolvida: boolean };
