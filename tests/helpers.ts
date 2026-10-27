@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-export async function createTestClient (notesDir: string, dataDir: string) {
+export async function createTestClient (notesDir: string, dataDir: string, extraEnv: Record<string, string> = {}) {
     const transport = new StdioClientTransport({
         command: 'node',
         args: [
@@ -12,6 +12,7 @@ export async function createTestClient (notesDir: string, dataDir: string) {
             ...process.env as Record<string, string>,
             NOTES_DIR: notesDir,
             DATA_DIR: dataDir,
+            ...extraEnv,
         }
     })
 

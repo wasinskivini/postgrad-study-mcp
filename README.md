@@ -9,8 +9,8 @@ Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para ap
 | Tipo | Nome | Descrição |
 |---|---|---|
 | 🔧 Tool | `listar_modulos` | Lista as pastas de módulos dentro de `NOTES_DIR` |
-| 🔧 Tool | `buscar_anotacao` | Busca um termo nas anotações e no código das aulas (até 20 resultados com arquivo, linha e trecho) |
-| 🔧 Tool | `ler_anotacao` | Lê uma anotação ou arquivo de código completo |
+| 🔧 Tool | `buscar_anotacao` | Busca um termo nas anotações, no código e nos PDFs das aulas (até 20 resultados com arquivo, linha, página e trecho), com filtro opcional por `tipos` |
+| 🔧 Tool | `ler_anotacao` | Lê uma anotação ou arquivo de código completo, ou um PDF por páginas (até 5 por vez) |
 | 🔧 Tool | `registrar_duvida` | Salva uma dúvida para revisar depois |
 | 🔧 Tool | `marcar_aula_concluida` | Marca uma aula como concluída |
 | 📄 Resource | `pos://duvidas` | Dúvidas registradas (JSON) |
@@ -24,8 +24,30 @@ Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para ap
 |---|---|---|
 | `NOTES_DIR` | `~/Documents` | Pasta raiz das anotações (cada subpasta é um módulo) |
 | `DATA_DIR` | `~/.postgrad-study-mcp` | Onde ficam `duvidas.json` e `progresso.json` |
+| `INCLUDE_PDF` | `true` | `false` desliga totalmente a busca e a leitura de PDFs |
 
-Arquivos lidos: `.md`, `.txt`, `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs` e `.py`, até 200 KB.
+Arquivos lidos, por tipo:
+
+| Tipo (`tipos`) | Extensões | Limite |
+|---|---|---|
+| `anotacoes` | `.md`, `.txt` | 200 KB |
+| `codigo` | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.py` | 200 KB |
+| `pdf` | `.pdf` (somente PDFs com texto; escaneados são recusados com aviso) | 30 MB, leitura de até 5 páginas por vez |
+
+### Filtrando por tipo
+
+Não é preciso passar parâmetros: basta pedir no chat e o modelo preenche `tipos` sozinho.
+
+```
+Busque "embeddings" só nos PDFs das aulas
+Procure "registerTool" só no código
+```
+
+Sem filtro, a busca olha todos os tipos. Como ela para em 20 resultados, um termo muito comum pode encher a lista com código e anotações antes de chegar aos PDFs — nesse caso, peça "só nos PDFs".
+
+### PDFs e tokens
+
+O texto dos PDFs é extraído na sua máquina e fica em cache enquanto o arquivo não muda. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_anotacao` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas.
 
 ---
 
@@ -71,7 +93,7 @@ Adicione ao `mcp.json` de usuário (`Cmd+Shift+P` → **MCP: Open User Configura
       "type": "stdio",
       "command": "node",
       "args": ["--experimental-strip-types", "/CAMINHO/ABSOLUTO/postgrad-study-mcp/src/index.ts"],
-      "env": { "NOTES_DIR": "/CAMINHO/DAS/SUAS/ANOTACOES" }
+      "env": { "NOTES_DIR": "/CAMINHO/DAS/SUAS/ANOTACOES", "INCLUDE_PDF": "true" }
     }
   }
 }
@@ -103,7 +125,7 @@ Os prompts aparecem digitando `/` no chat, por exemplo `/mcp.postgrad-study-mcp.
 | `npm run test:dev` | Testes em modo watch |
 | `npm run mcp:inspect` | Abre o MCP Inspector usando as anotações de exemplo de `tests/fixtures` |
 
-Os testes sobem o servidor via stdio com uma cópia temporária de `tests/fixtures/notas` e um `DATA_DIR` temporário, então não tocam nos seus dados reais. Os casos de ataque (`.env`, symlink para fora, pasta oculta, segredo no código, arquivo com injeção e caracteres invisíveis) são criados na hora pelos testes.
+Os testes sobem o servidor via stdio com uma cópia temporária de `tests/fixtures/notas` e um `DATA_DIR` temporário, então não tocam nos seus dados reais. Os casos de ataque (`.env`, symlink para fora, pasta oculta, segredo no código, arquivo com injeção e caracteres invisíveis) e os PDFs de teste (com várias páginas, escaneado e com injeção) são criados na hora pelos testes.
 
 ## Estrutura
 
@@ -116,5 +138,6 @@ src/
 tests/
   fixtures/    # Anotações de exemplo
   helpers.ts   # Client MCP de teste
+  pdf.ts       # Gera PDFs mínimos para os testes
   mcp.test.ts  # Testes de integração
 ```
