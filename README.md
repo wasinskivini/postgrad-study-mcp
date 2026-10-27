@@ -6,6 +6,8 @@ Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para ap
 
 > **O servidor não traz conteúdo nenhum.** Ele roda no seu computador e busca na **sua** pasta de estudos. Cada pessoa aponta para a própria pasta; ninguém acessa os arquivos de ninguém.
 
+> 🎓 **Projeto educacional.** Criado durante a pós-graduação em Engenharia de Software com IA Aplicada para praticar a construção de servidores MCP e apoiar os estudos. Não é um produto oficial do curso nem da instituição, não tem garantia de funcionamento (veja a [licença](LICENSE)) e não substitui o material e as orientações dos professores.
+
 ---
 
 ## Instalação (passo a passo)
@@ -167,6 +169,22 @@ Sem filtro, a busca olha todos os tipos. Como ela para em 20 resultados, um term
 ### PDFs e tokens
 
 O texto dos PDFs é extraído na sua máquina e fica em cache enquanto o arquivo não muda. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_anotacao` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas.
+
+---
+
+## Custos
+
+**Rodar o servidor não custa nada.** Ele não usa nenhuma API de IA nem chave, não acessa a internet e não tem LLM: só lê arquivos na sua máquina e devolve texto. Por isso também não há `.env` com credenciais — o [`.env.example`](.env.example) lista as três variáveis, nenhuma secreta.
+
+Quem "pensa" é o modelo do **seu** cliente MCP, cobrado pelo plano dele:
+
+| Onde roda | Custo |
+|---|---|
+| `postgrad-study-mcp` (busca, PDFs, dúvidas) | Grátis — local |
+| Modelo do Copilot Chat | Conforme o seu plano do Copilot. No **Free** há um limite mensal de uso e nada é cobrado; estudantes podem pedir o **Pro** grátis pelo [GitHub Education](https://education.github.com) |
+| Outros clientes (Claude, Cursor…) | Conforme o plano/assinatura de cada um |
+
+O servidor limita o que manda ao modelo — até 20 trechos de 200 caracteres por busca, arquivos de texto até 200 KB e PDFs de até 5 páginas por leitura — para não encher o contexto. Se você notar consumo alto, use o filtro `tipos` ou `INCLUDE_PDF=false`.
 
 ---
 
