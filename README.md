@@ -217,6 +217,56 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP (na nuvem, no
 
 ---
 
+## Entendendo o código
+
+O código é comentado como um **roteiro de leitura em passos**: cada arquivo é um passo, e cada ponto importante dentro dele tem um número (2.4, 3.6...). Os comentários citam esses números, então dá para seguir uma chamada de um arquivo para o outro.
+
+### Estrutura
+
+```
+src/
+  index.ts     # PASSO 1 — ponto de entrada: liga o servidor ao transporte stdio
+  mcp.ts       # PASSO 2 — o que o servidor oferece: tools, resources e prompts
+  service.ts   # PASSO 3 — as regras: tipos de arquivo, busca, leitura, PDFs, dados salvos
+  safety.ts    # PASSO 4 — as proteções: caracteres invisíveis, segredos, prompt injection
+tests/
+  helpers.ts   # PASSO 5.1 — cliente MCP de teste (sobe o servidor de verdade)
+  pdf.ts       # PASSO 5.2 — gera PDFs mínimos para os testes
+  mcp.test.ts  # PASSO 5.3 — testes de ponta a ponta
+  fixtures/    # anotações de exemplo
+```
+
+### Ordem de leitura sugerida
+
+| Passo | Arquivo | O que você aprende |
+|---|---|---|
+| 1 | [src/index.ts](src/index.ts) | Como um servidor MCP sobe e por que o stdout é sagrado (1.1 a 1.4) |
+| 2 | [src/mcp.ts](src/mcp.ts) | Como declarar tools (2.3 a 2.7), resources (2.8) e prompts (2.9); instructions (2.1) e validação (2.2) |
+| 3 | [src/service.ts](src/service.ts) | Tipos e filtros (3.1 a 3.3), PDFs (3.4, 3.8), busca (3.6), leitura (3.7), segurança de caminhos (3.9), dados (3.10) |
+| 4 | [src/safety.ts](src/safety.ts) | As camadas contra vazamento e prompt injection (4.1 a 4.5) |
+| 5 | [tests/](tests/) | Como testar um servidor MCP pelo próprio protocolo |
+
+### O caminho de uma busca, passo a passo
+
+Quando você pergunta *"o que eu anotei sobre RAG nos PDFs?"*:
+
+```
+Copilot ── tools/call buscar_anotacao {termo:"RAG", tipos:["pdf"]} ──►  PASSO 1.1  chega pelo stdin
+                                                                        PASSO 2.2  Zod valida os argumentos
+                                                                        PASSO 2.4  handler da tool
+                                                                        PASSO 3.6  searchNotes
+                                                                        PASSO 3.9    └ módulo dentro da pasta?
+                                                                        PASSO 3.5    └ lista os arquivos permitidos (3.3)
+                                                                        PASSO 3.4    └ extrai o texto dos PDFs (com cache)
+                                                                        PASSO 4.4    └ cada trecho: invisíveis, alertas, segredos
+                                                                        PASSO 4.5  delimita como <dados_nao_confiaveis>
+Copilot ◄──────────────────── resultado (texto + structuredContent) ──  PASSO 1.1  sai pelo stdout
+```
+
+Depois disso o modelo decide se lê as páginas (`ler_anotacao` → PASSO 2.5 → 3.7 → 3.9 → 3.8 → 4.4 → 4.5) e escreve a resposta.
+
+---
+
 ## Atualizando
 
 ```bash
@@ -248,28 +298,13 @@ A cada push na `main` e em todo pull request, o GitHub Actions roda `typecheck` 
 
 1. Crie uma branch a partir da `main`
 2. Faça as alterações com testes (`tests/mcp.test.ts`)
-3. Rode `npm run typecheck && npm test`
-4. Abra um pull request
+3. Mantenha os comentários de passo (1.x a 5.x) em dia: se mudar um fluxo, atualize os números citados e a seção [Entendendo o código](#entendendo-o-código)
+4. Escreva caracteres invisíveis sempre como escape (`\u200B`), nunca o caractere em si — um teste falha se isso acontecer
+5. Rode `npm run typecheck && npm test`
+6. Abra um pull request
 
 ---
 
 ## Licença
 
 [ISC](LICENSE)
-
----
-
-## Estrutura
-
-```
-src/
-  index.ts     # Ponto de entrada (transporte stdio)
-  mcp.ts       # Registro de tools, resources e prompts
-  service.ts   # Leitura das anotações e persistência de dúvidas/progresso
-  safety.ts    # Sanitização, redação de segredos e detecção de prompt injection
-tests/
-  fixtures/    # Anotações de exemplo
-  helpers.ts   # Client MCP de teste
-  pdf.ts       # Gera PDFs mínimos para os testes
-  mcp.test.ts  # Testes de integração
-```
