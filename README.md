@@ -9,8 +9,8 @@ Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para ap
 | Tipo | Nome | Descrição |
 |---|---|---|
 | 🔧 Tool | `listar_modulos` | Lista as pastas de módulos dentro de `NOTES_DIR` |
-| 🔧 Tool | `buscar_anotacao` | Busca um termo nos arquivos `.md` e `.txt` (até 20 resultados com arquivo, linha e trecho) |
-| 🔧 Tool | `ler_anotacao` | Lê um arquivo de anotação completo |
+| 🔧 Tool | `buscar_anotacao` | Busca um termo nas anotações e no código das aulas (até 20 resultados com arquivo, linha e trecho) |
+| 🔧 Tool | `ler_anotacao` | Lê uma anotação ou arquivo de código completo |
 | 🔧 Tool | `registrar_duvida` | Salva uma dúvida para revisar depois |
 | 🔧 Tool | `marcar_aula_concluida` | Marca uma aula como concluída |
 | 📄 Resource | `pos://duvidas` | Dúvidas registradas (JSON) |
@@ -25,7 +25,30 @@ Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para ap
 | `NOTES_DIR` | `~/Documents` | Pasta raiz das anotações (cada subpasta é um módulo) |
 | `DATA_DIR` | `~/.postgrad-study-mcp` | Onde ficam `duvidas.json` e `progresso.json` |
 
-Pastas ocultas e `node_modules`, `.git`, `dist`, `build` e `coverage` são ignoradas na busca. `ler_anotacao` recusa caminhos fora de `NOTES_DIR`.
+Arquivos lidos: `.md`, `.txt`, `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs` e `.py`, até 200 KB.
+
+---
+
+## Segurança
+
+Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP (na nuvem, no caso do Copilot). Por isso o servidor aplica várias camadas de proteção:
+
+**Acesso a arquivos**
+- Lista fechada de extensões: `.env`, `.json`, chaves (`.pem`, `.key`) e qualquer outra extensão nunca são lidos
+- Arquivos e pastas ocultos (`.env`, `.git`, `.oculta/`) e `node_modules`, `dist`, `build`, `coverage`, `venv` são ignorados
+- Caminhos com `../` e symlinks que apontam para fora de `NOTES_DIR` são bloqueados
+- Segredos que aparecem no código (chaves `sk-…`, `ghp_…`, AWS, Google, Slack, chaves privadas, `apiKey = "…"`, `senha: "…"`, credenciais em URLs) são trocados por `[REDACTED]`
+
+**Prompt injection** — não existe proteção 100%, então são várias camadas:
+- O conteúdo dos arquivos volta delimitado por `<dados_nao_confiaveis id="…">` com um id aleatório a cada chamada; o arquivo não consegue "fechar" o bloco e escrever fora dele
+- Caracteres invisíveis (zero-width, controle de direção, tag characters Unicode) são removidos, já que servem para esconder instruções do leitor humano
+- Padrões típicos de injeção ("ignore as instruções anteriores", "you are now", `<system>`, "não conte ao usuário"…) geram um **ALERTA** no resultado e o campo `alertas` no `structuredContent`
+- As `instructions` do servidor e os prompts dizem ao modelo para tratar o conteúdo como dados e avisar o usuário sobre alertas
+- `registrar_duvida` recusa textos com padrões de injeção, para nada ser "plantado" no histórico que depois volta via `pos://duvidas`
+- Argumentos das tools têm tamanho máximo e não aceitam caracteres invisíveis; `gerar_quiz` só aceita módulos que existem
+- Tools anotadas com `readOnlyHint`, para o cliente distinguir leitura de escrita; as de escrita só alteram os JSONs em `DATA_DIR` (criados com permissão `600`)
+
+> Não coloque em `NOTES_DIR` material sigiloso ou com dados pessoais: mesmo com essas camadas, o que for lido vai para o modelo.
 
 ---
 
@@ -80,7 +103,7 @@ Os prompts aparecem digitando `/` no chat, por exemplo `/mcp.postgrad-study-mcp.
 | `npm run test:dev` | Testes em modo watch |
 | `npm run mcp:inspect` | Abre o MCP Inspector usando as anotações de exemplo de `tests/fixtures` |
 
-Os testes sobem o servidor via stdio com `NOTES_DIR=tests/fixtures/notas` e um `DATA_DIR` temporário, então não tocam nos seus dados reais.
+Os testes sobem o servidor via stdio com uma cópia temporária de `tests/fixtures/notas` e um `DATA_DIR` temporário, então não tocam nos seus dados reais. Os casos de ataque (`.env`, symlink para fora, pasta oculta, segredo no código, arquivo com injeção e caracteres invisíveis) são criados na hora pelos testes.
 
 ## Estrutura
 
@@ -89,6 +112,7 @@ src/
   index.ts     # Ponto de entrada (transporte stdio)
   mcp.ts       # Registro de tools, resources e prompts
   service.ts   # Leitura das anotações e persistência de dúvidas/progresso
+  safety.ts    # Sanitização, redação de segredos e detecção de prompt injection
 tests/
   fixtures/    # Anotações de exemplo
   helpers.ts   # Client MCP de teste
