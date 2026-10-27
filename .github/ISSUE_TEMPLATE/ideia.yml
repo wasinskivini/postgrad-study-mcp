@@ -1,0 +1,37 @@
+name: 💡 Ideia
+description: Sugira uma funcionalidade ou melhoria
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Que problema isso resolve?
+      description: Conte a situação de estudo em que você sentiu falta disso.
+      placeholder: "Quando estou revisando para a prova, eu queria..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Como você imagina que funcionaria
+      description: Uma tool nova? Um parâmetro numa tool existente? Um prompt?
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas que você considerou
+  - type: checkboxes
+    id: principios
+    attributes:
+      label: Princípios do projeto
+      description: O servidor é local, gratuito e determinístico. A ideia respeita isso?
+      options:
+        - label: Não precisa de LLM nem de API externa no servidor
+        - label: Não exige enviar material do curso para o repositório
+  - type: checkboxes
+    id: contribuir
+    attributes:
+      label: Contribuição
+      options:
+        - label: Quero implementar isso eu mesmo(a)

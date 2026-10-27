@@ -345,8 +345,10 @@ describe('código-fonte', () => {
     it('should not contain literal invisible characters', async () => {
         const { readdir, readFile } = await import('node:fs/promises')
         const invisible = /[\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/
-        for (const dir of ['src', 'tests']) {
-            for (const name of (await readdir(dir)).filter(n => n.endsWith('.ts'))) {
+        // Código, documentação e configs do GitHub (templates, workflow).
+        const checked = ['.ts', '.md', '.yml', '.json']
+        for (const dir of ['.', 'src', 'tests', '.github', '.github/ISSUE_TEMPLATE', '.github/workflows']) {
+            for (const name of (await readdir(dir)).filter(n => checked.some(ext => n.endsWith(ext)))) {
                 const content = await readFile(join(dir, name), 'utf8')
                 assert.doesNotMatch(content, invisible, `${dir}/${name} tem caractere invisível literal`)
             }
