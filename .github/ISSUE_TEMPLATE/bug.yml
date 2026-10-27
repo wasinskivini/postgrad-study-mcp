@@ -1,0 +1,57 @@
+name: 🐛 Bug
+description: Algo não funciona como deveria
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar! Se for uma **falha de segurança**, não use este formulário — veja o SECURITY.md.
+  - type: textarea
+    id: o-que-aconteceu
+    attributes:
+      label: O que aconteceu
+      description: Descreva o problema. Se houver mensagem de erro, cole aqui.
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que você esperava
+    validations:
+      required: true
+  - type: textarea
+    id: reproduzir
+    attributes:
+      label: Como reproduzir
+      description: O que você pediu no chat ou qual tool chamou, com quais argumentos.
+      placeholder: |
+        1. Pedi no Copilot Chat: "busque X só nos PDFs"
+        2. A tool buscar_anotacao foi chamada com ...
+        3. Veio ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs do servidor
+      description: Em MCP List Servers → postgrad-study-mcp → Show Output. Remova caminhos ou dados pessoais antes de colar.
+      render: text
+  - type: input
+    id: node
+    attributes:
+      label: Versão do Node (node -v)
+      placeholder: v22.18.0
+    validations:
+      required: true
+  - type: dropdown
+    id: so
+    attributes:
+      label: Sistema operacional
+      options: [macOS, Windows, Linux]
+    validations:
+      required: true
+  - type: input
+    id: cliente
+    attributes:
+      label: Cliente MCP e versão
+      placeholder: VS Code 1.143 + Copilot

@@ -296,12 +296,14 @@ A cada push na `main` e em todo pull request, o GitHub Actions roda `typecheck` 
 
 ### Contribuindo
 
-1. Crie uma branch a partir da `main`
-2. Faça as alterações com testes (`tests/mcp.test.ts`)
-3. Mantenha os comentários de passo (1.x a 5.x) em dia: se mudar um fluxo, atualize os números citados e a seção [Entendendo o código](#entendendo-o-código)
-4. Escreva caracteres invisíveis sempre como escape (`\u200B`), nunca o caractere em si — um teste falha se isso acontecer
-5. Rode `npm run typecheck && npm test`
-6. Abra um pull request
+Contribuições são bem-vindas! O passo a passo completo — fork, branch, convenções do código, testes e pull request — está no **[CONTRIBUTING.md](CONTRIBUTING.md)**. Em resumo:
+
+1. Faça um fork e crie uma branch (`feat/…`, `fix/…`, `docs/…`)
+2. Siga as convenções (separação mcp/service/safety, comentários de passo, testes para tudo)
+3. Rode `npm run typecheck && npm test`
+4. Abra um pull request — o template traz um checklist
+
+Para bugs e ideias, use as [issues](https://github.com/wasinskivini/postgrad-study-mcp/issues/new/choose). Falhas de segurança **não** vão em issue pública: veja o [SECURITY.md](SECURITY.md).
 
 ---
 
