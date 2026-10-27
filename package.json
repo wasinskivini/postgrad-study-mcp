@@ -1,0 +1,25 @@
+{
+  "name": "pos-estudos-mcp",
+  "version": "0.0.1",
+  "description": "MCP server para estudos da pós: busca nas anotações, dúvidas e progresso",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "node src/index.ts",
+    "dev": "node --watch --inspect src/index.ts",
+    "test": "node --test tests/**/*.test.ts",
+    "mcp:inspect": "npx @modelcontextprotocol/inspector -e NOTES_DIR=./tests/fixtures/notas node src/index.ts",
+    "test:dev": "node --inspect --test --watch tests/**/*.test.ts"
+  },
+  "keywords": ["mcp", "estudos"],
+  "author": "viniciuswasinski",
+  "license": "ISC",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@types/node": "^24.11.0",
+    "zod": "^3.25.76"
+  }
+}
