@@ -49,7 +49,7 @@ O código é comentado como um **roteiro de leitura em passos** (1 = `index.ts`,
   - `service.ts` tem a lógica (sem nada de MCP)
   - `safety.ts` tem as proteções
 - **Todo texto vindo de arquivo passa por `prepareUntrusted` e sai por `wrapUntrusted`** (PASSO 4.4 e 4.5). Não devolva conteúdo de arquivo ao modelo sem essas camadas.
-- **Nada de LLM nem de rede no servidor.** O projeto é determinístico, local e gratuito de propósito. Se a sua ideia precisa de API externa, discuta numa issue antes.
+- **Nada de LLM nem de rede no servidor.** O projeto é determinístico, local e gratuito de propósito. A única exceção é a busca semântica opcional (PASSO 6), que baixa uma vez um modelo de embeddings e roda tudo localmente. Se a sua ideia precisa de API externa, discuta numa issue antes.
 - **Descrições de tools importam:** são o "manual" que o modelo lê para decidir o que chamar. Seja claro sobre o que a tool faz e quando usá-la.
 - **Comentários de passo em dia:** se mudar um fluxo, atualize os números citados (2.4, 3.6…) nos comentários e no README.
 - **Caracteres invisíveis só como escape** (`\u200B`), nunca o caractere em si — um teste falha se isso acontecer.

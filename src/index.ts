@@ -16,6 +16,7 @@
  *   PASSO 3  src/service.ts  → as regras: busca, leitura de arquivos/PDFs, dados
  *   PASSO 4  src/safety.ts   → as proteções: segredos e prompt injection
  *   PASSO 5  tests/          → como tudo é testado de ponta a ponta
+ *   PASSO 6  src/semantic.ts → (opcional) busca por significado com embeddings
  */
 
 // 1.1 — O transporte stdio: o cliente escreve as requisições no stdin deste
@@ -26,6 +27,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { server } from "./mcp.ts";
 // A configuração lida das variáveis de ambiente (PASSO 3.2).
 import { config } from "./service.ts";
+// A busca semântica opcional (PASSO 6).
+import { atualizarIndice } from "./semantic.ts";
 
 async function main() {
     const transport = new StdioServerTransport()
@@ -37,9 +40,12 @@ async function main() {
     // 1.3 — Log no stderr (console.error), nunca no stdout. No VS Code ele aparece
     //       em MCP: List Servers → postgrad-study-mcp → Show Output.
     console.error(`Postgrad Study MCP Server running on stdio (notas: ${config.notesDir})`)
+    // 1.4 — Com SEMANTIC_SEARCH=true, começa a montar o índice em segundo plano
+    //       (sem await): o servidor já atende pedidos enquanto isso.
+    if (config.semanticSearch) void atualizarIndice()
 }
 
-// 1.4 — Qualquer erro na inicialização encerra o processo com código 1, para o
+// 1.5 — Qualquer erro na inicialização encerra o processo com código 1, para o
 //       cliente perceber que o servidor não subiu (em vez de ficar travado).
 main().catch((error) => {
     console.error("Fatal error in main():", error);

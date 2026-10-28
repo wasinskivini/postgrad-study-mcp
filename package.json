@@ -9,7 +9,8 @@
     "test": "node --test tests/**/*.test.ts",
     "typecheck": "tsc --noEmit -p .",
     "mcp:inspect": "npx @modelcontextprotocol/inspector -e NOTES_DIR=./tests/fixtures/notas node src/index.ts",
-    "test:dev": "node --inspect --test --watch tests/**/*.test.ts"
+    "test:dev": "node --inspect --test --watch tests/**/*.test.ts",
+    "test:semantic": "TEST_SEMANTIC=1 node --test tests/semantic.test.ts"
   },
   "keywords": [
     "mcp",
@@ -40,5 +41,8 @@
   },
   "devDependencies": {
     "typescript": "^5.9.3"
+  },
+  "optionalDependencies": {
+    "@huggingface/transformers": "4.3.1"
   }
 }

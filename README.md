@@ -89,7 +89,7 @@ Os caminhos precisam ser **absolutos**: o servidor roda fora da pasta do projeto
 ### 5. Inicie e teste
 
 1. `Cmd/Ctrl+Shift+P` → **MCP: List Servers** → `postgrad-study-mcp` → **Start Server**
-2. Em **Show Output**, confira se aparece `Discovered 6 tools`
+2. Em **Show Output**, confira se aparece `Discovered 7 tools` (8 com a busca semântica ligada)
 3. Abra o Copilot Chat no modo **Agent** e pergunte algo sobre o seu material
 
 Na primeira chamada de cada tool o VS Code pede permissão — clique em **Allow**. Clicando no bloco "Ran buscar_anotacao" da resposta, dá para ver exatamente o que o servidor devolveu.
@@ -121,6 +121,8 @@ Com o servidor rodando, no Copilot Chat (modo **Agent**):
 | `Registre uma dúvida no modulo03: quando usar resource em vez de tool?` | `registrar_duvida` |
 | `Marque a aula 05 do modulo03 como concluída` | `marcar_aula_concluida` |
 | `Quais dúvidas eu ainda tenho pendentes?` | `listar_duvidas` |
+| `Já entendi a dúvida 2, pode marcar como resolvida` | `resolver_duvida` |
+| `Onde as aulas explicam como transformar texto em números?` | `buscar_por_significado` (se a busca semântica estiver ligada) |
 
 Os prompts aparecem digitando `/` no chat: `/mcp.postgrad-study-mcp.gerar_quiz` e `/mcp.postgrad-study-mcp.plano_de_revisao`.
 
@@ -143,6 +145,8 @@ No `plano_de_revisao`, o próprio servidor lê as suas dúvidas e o seu progress
 | 🔧 Tool | `ler_anotacao` | Lê uma anotação ou arquivo de código completo, ou um PDF por páginas (até 5 por vez) |
 | 🔧 Tool | `registrar_duvida` | Salva uma dúvida para revisar depois |
 | 🔧 Tool | `marcar_aula_concluida` | Marca uma aula como concluída |
+| 🔧 Tool | `resolver_duvida` | Marca uma dúvida como resolvida pelo número (`#2`); ela sai do plano de revisão mas continua no histórico |
+| 🔧 Tool | `buscar_por_significado` | **Opcional** (`SEMANTIC_SEARCH=true`). Busca por significado nas anotações e PDFs: acha o assunto mesmo com outras palavras |
 | 🔧 Tool | `listar_duvidas` | Lista as dúvidas não resolvidas e as aulas concluídas (o modelo não consegue abrir resources sozinho, então os mesmos dados também existem como tool) |
 | 📄 Resource | `pos://duvidas` | Dúvidas registradas (JSON) |
 | 📄 Resource | `pos://progresso` | Aulas concluídas por módulo (JSON) |
@@ -158,6 +162,8 @@ No `plano_de_revisao`, o próprio servidor lê as suas dúvidas e o seu progress
 | `NOTES_DIR` | `~/Documents` | Pasta raiz das anotações (cada subpasta é um módulo) |
 | `DATA_DIR` | `~/.postgrad-study-mcp` | Onde ficam `duvidas.json` e `progresso.json` |
 | `INCLUDE_PDF` | `true` | `false` desliga totalmente a busca e a leitura de PDFs |
+| `SEMANTIC_SEARCH` | `false` | `true` liga a [busca por significado](#busca-por-significado-opcional) |
+| `MODELS_DIR` | `DATA_DIR/modelos` | Onde o modelo de embeddings fica guardado depois do download |
 
 Arquivos lidos, por tipo:
 
@@ -176,23 +182,45 @@ Busque "embeddings" só nos PDFs das aulas
 Procure "registerTool" só no código
 ```
 
-Sem filtro, a busca olha todos os tipos. Como ela para em 20 resultados, um termo muito comum pode encher a lista com código e anotações antes de chegar aos PDFs — nesse caso, peça "só nos PDFs".
+Sem filtro, a busca olha todos os tipos, nesta ordem: **anotações, PDFs e por último código**. Ela devolve no máximo 20 resultados, até 3 por arquivo, para um arquivo só não ocupar a lista inteira. Se o limite for atingido, a resposta avisa: aí vale pedir "só nos PDFs" ou "só no módulo X".
 
 ### PDFs e tokens
 
 O texto dos PDFs é extraído na sua máquina e fica em cache enquanto o arquivo não muda. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_anotacao` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas.
 
+### Busca por significado (opcional)
+
+A busca normal é **literal**: procurar "vetor" não acha um trecho que só fala em "embedding". Com `SEMANTIC_SEARCH=true`, o servidor ganha a tool `buscar_por_significado`, que acha trechos pelo **assunto**, mesmo com palavras diferentes ou em outro idioma.
+
+Ela usa **embeddings**, o mesmo "R" do RAG: cada trecho das suas anotações e PDFs vira um vetor de números, e a busca devolve os trechos com o vetor mais parecido com o da pergunta. Quem gera os vetores é um **modelo de embeddings** pequeno ([multilingual-e5-small](https://huggingface.co/intfloat/multilingual-e5-small), licença MIT), que roda **dentro do servidor, no seu computador**. Ele não escreve texto nem responde nada, e não precisa de Ollama nem de chave de API.
+
+Para ligar, adicione no `env` do `mcp.json`:
+
+```json
+"SEMANTIC_SEARCH": "true"
+```
+
+O que acontece:
+
+1. **Primeira vez:** o modelo é baixado do Hugging Face (~145 MB, uma vez só) e guardado em `MODELS_DIR`. É o **único acesso à internet** do servidor. Seus arquivos nunca são enviados: os vetores são calculados localmente.
+2. **Indexação:** o servidor divide anotações e PDFs em trechos de ~800 caracteres e gera o vetor de cada um, em segundo plano. Na primeira vez leva alguns minutos (~8 minutos para ~1.900 arquivos num Mac com Apple Silicon); enquanto isso a busca avisa que o índice está incompleto e a busca literal continua funcionando.
+3. **Depois:** o índice fica salvo em `DATA_DIR/indice-semantico.json`. Nas próximas vezes só arquivos novos ou alterados são processados (segundos).
+
+Código **não** entra no índice: nomes como `registerTool` já são termos exatos, e a busca literal resolve melhor.
+
+Custos e limites: a biblioteca ([transformers.js](https://huggingface.co/docs/transformers.js)) é instalada junto pelo `npm install` como dependência **opcional** (~470 MB em `node_modules`); se a instalação dela falhar no seu sistema, o resto do servidor funciona normalmente. Cada busca devolve até 8 trechos de 500 caracteres.
+
 ---
 
 ## Custos
 
-**Rodar o servidor não custa nada.** Ele não usa nenhuma API de IA nem chave, não acessa a internet e não tem LLM: só lê arquivos na sua máquina e devolve texto. Por isso também não há `.env` com credenciais — o [`.env.example`](.env.example) lista as três variáveis, nenhuma secreta.
+**Rodar o servidor não custa nada.** Ele não usa nenhuma API de IA nem chave, não acessa a internet e não tem LLM: só lê arquivos na sua máquina e devolve texto. A única exceção é opcional: com `SEMANTIC_SEARCH=true`, ele baixa uma vez o modelo de embeddings, que depois roda localmente e de graça. Por isso também não há `.env` com credenciais — o [`.env.example`](.env.example) lista as três variáveis, nenhuma secreta.
 
 Quem "pensa" é o modelo do **seu** cliente MCP, cobrado pelo plano dele:
 
 | Onde roda | Custo |
 |---|---|
-| `postgrad-study-mcp` (busca, PDFs, dúvidas) | Grátis — local |
+| `postgrad-study-mcp` (busca, PDFs, dúvidas, busca semântica) | Grátis — local |
 | Modelo do Copilot Chat | Conforme o seu plano do Copilot. No **Free** há um limite mensal de uso e nada é cobrado; estudantes podem pedir o **Pro** grátis pelo [GitHub Education](https://education.github.com) |
 | Outros clientes (Claude, Cursor…) | Conforme o plano/assinatura de cada um |
 
@@ -216,6 +244,7 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP (na nuvem, no
 - Padrões típicos de injeção ("ignore as instruções anteriores", "you are now", `<system>`, "não conte ao usuário"…) geram um **ALERTA** no resultado e o campo `alertas` no `structuredContent`
 - As `instructions` do servidor e os prompts dizem ao modelo para tratar o conteúdo como dados e só falar de prompt injection quando houver uma linha `⚠️ ALERTA`
 - `registrar_duvida` recusa textos com padrões de injeção, para nada ser "plantado" no histórico que depois volta via `listar_duvidas` e `plano_de_revisao`
+- Busca semântica (opcional): o modelo é baixado de um commit fixo do Hugging Face (uma versão nova publicada lá não é baixada sem querer), e o índice salvo em `DATA_DIR` guarda o texto já com segredos redigidos e com permissão `600`
 - Argumentos das tools têm tamanho máximo e não aceitam caracteres invisíveis; `gerar_quiz` só aceita módulos que existem
 - Tools anotadas com `readOnlyHint`, para o cliente distinguir leitura de escrita; as de escrita só alteram os JSONs em `DATA_DIR` (criados com permissão `600`)
 
@@ -237,10 +266,12 @@ src/
   mcp.ts       # PASSO 2 — o que o servidor oferece: tools, resources e prompts
   service.ts   # PASSO 3 — as regras: tipos de arquivo, busca, leitura, PDFs, dados salvos
   safety.ts    # PASSO 4 — as proteções: caracteres invisíveis, segredos, prompt injection
+  semantic.ts  # PASSO 6 — (opcional) busca por significado com embeddings
 tests/
   helpers.ts   # PASSO 5.1 — cliente MCP de teste (sobe o servidor de verdade)
   pdf.ts       # PASSO 5.2 — gera PDFs mínimos para os testes
   mcp.test.ts  # PASSO 5.3 — testes de ponta a ponta
+  semantic.test.ts # PASSO 5.4 — testes da busca semântica
   fixtures/    # anotações de exemplo
 ```
 
@@ -248,11 +279,12 @@ tests/
 
 | Passo | Arquivo | O que você aprende |
 |---|---|---|
-| 1 | [src/index.ts](src/index.ts) | Como um servidor MCP sobe e por que o stdout é sagrado (1.1 a 1.4) |
+| 1 | [src/index.ts](src/index.ts) | Como um servidor MCP sobe e por que o stdout é sagrado (1.1 a 1.5) |
 | 2 | [src/mcp.ts](src/mcp.ts) | Como declarar tools (2.3 a 2.8), resources (2.9) e prompts (2.10); instructions (2.1) e validação (2.2) |
-| 3 | [src/service.ts](src/service.ts) | Tipos e filtros (3.1 a 3.3), PDFs (3.4, 3.8), busca (3.6), leitura (3.7), segurança de caminhos (3.9), dados (3.10) |
+| 3 | [src/service.ts](src/service.ts) | Tipos, limites e filtros (3.1 a 3.3), PDFs (3.4, 3.8), busca (3.6), leitura (3.7), segurança de caminhos (3.9), dados (3.10) |
 | 4 | [src/safety.ts](src/safety.ts) | As camadas contra vazamento e prompt injection (4.1 a 4.5) |
 | 5 | [tests/](tests/) | Como testar um servidor MCP pelo próprio protocolo |
+| 6 | [src/semantic.ts](src/semantic.ts) | (Opcional) Embeddings na prática: dividir em trechos, indexar e buscar por similaridade (6.1 a 6.5) |
 
 ### O caminho de uma busca, passo a passo
 
@@ -296,11 +328,12 @@ Depois reinicie o servidor em **MCP: List Servers**.
 | `npm test` | Roda os testes de integração |
 | `npm run typecheck` | Verifica os tipos com `tsc` (o Node só remove os tipos, não os checa) |
 | `npm run test:dev` | Testes em modo watch |
+| `npm run test:semantic` | Testes da busca semântica com o modelo de verdade (baixa ~145 MB na primeira vez) |
 | `npm run mcp:inspect` | Abre o MCP Inspector usando as anotações de exemplo de `tests/fixtures` |
 
 Os testes sobem o servidor via stdio com uma cópia temporária de `tests/fixtures/notas` e um `DATA_DIR` temporário, então não tocam nos seus dados reais. Os casos de ataque (`.env`, symlink para fora, pasta oculta, segredo no código, arquivo com injeção e caracteres invisíveis) e os PDFs de teste (com várias páginas, escaneado e com injeção) são criados na hora pelos testes.
 
-A cada push na `main` e em todo pull request, o GitHub Actions roda `typecheck` e `test` no Ubuntu e no macOS, com Node 22 e 24.
+A cada push na `main` e em todo pull request, o GitHub Actions roda `typecheck` e `test` no Ubuntu e no macOS, com Node 22 e 24, e um job separado roda `test:semantic` com o modelo de verdade.
 
 ### Contribuindo
 
