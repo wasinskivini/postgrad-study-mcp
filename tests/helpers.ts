@@ -14,12 +14,11 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 export async function createTestClient (notesDir: string, dataDir: string, extraEnv: Record<string, string> = {}) {
     // O transporte do lado do cliente: inicia "node src/index.ts" como processo
     // filho e fala com ele por stdin/stdout (o mesmo stdio do PASSO 1.1).
+    // Com TEST_DIST=1 (no CI, depois do npm run build) os mesmos testes rodam
+    // contra o JavaScript compilado que vai para o npm.
     const transport = new StdioClientTransport({
         command: 'node',
-        args: [
-            '--experimental-strip-types',
-            'src/index.ts'
-        ],
+        args: [process.env.TEST_DIST ? 'dist/index.js' : 'src/index.ts'],
         env: {
             ...process.env as Record<string, string>,
             NOTES_DIR: notesDir,

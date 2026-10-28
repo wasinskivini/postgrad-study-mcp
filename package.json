@@ -2,7 +2,14 @@
   "name": "postgrad-study-mcp",
   "version": "0.1.0",
   "description": "MCP server para estudos da pós: busca em anotações, código e PDFs das aulas, dúvidas e progresso",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "bin": {
+    "postgrad-study-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    ".env.example"
+  ],
   "scripts": {
     "start": "node src/index.ts",
     "dev": "node --watch --inspect src/index.ts",
@@ -10,7 +17,10 @@
     "typecheck": "tsc --noEmit -p .",
     "mcp:inspect": "npx @modelcontextprotocol/inspector -e NOTES_DIR=./tests/fixtures/notas node src/index.ts",
     "test:dev": "node --inspect --test --watch tests/**/*.test.ts",
-    "test:semantic": "TEST_SEMANTIC=1 node --test tests/semantic.test.ts"
+    "test:semantic": "node --test tests/semantic.model.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "test:pack": "node --test tests/pacote.smoke.ts"
   },
   "keywords": [
     "mcp",
@@ -35,14 +45,20 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@types/node": "^24.11.0",
     "unpdf": "^1.9.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@huggingface/transformers": "4.3.1",
+    "@types/node": "^24.11.0",
     "typescript": "^5.9.3"
   },
-  "optionalDependencies": {
+  "peerDependencies": {
     "@huggingface/transformers": "4.3.1"
+  },
+  "peerDependenciesMeta": {
+    "@huggingface/transformers": {
+      "optional": true
+    }
   }
 }

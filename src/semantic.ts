@@ -79,7 +79,7 @@ let embedderPromise: Promise<Embedder> | undefined;
 function loadEmbedder(): Promise<Embedder> {
     embedderPromise ??= (async () => {
         const { pipeline, env } = await import('@huggingface/transformers').catch(() => {
-            throw new Error('Biblioteca @huggingface/transformers não instalada. Rode "npm install" na pasta do projeto.');
+            throw new Error('Biblioteca @huggingface/transformers não instalada. Com npx, acrescente "--package=@huggingface/transformers@4.3.1" nos args (veja "Busca por significado" no README); a partir do código-fonte, rode "npm install".');
         });
         // Único acesso à internet do servidor: baixar o modelo na primeira vez.
         // Depois ele fica em MODELS_DIR e é lido do disco. Seus arquivos nunca
@@ -205,12 +205,15 @@ async function construirIndice(): Promise<void> {
     console.error(`Índice semântico pronto: ${indice.size} arquivo(s), ${alterados} processado(s) agora`);
 }
 
-// Inicia (ou reaproveita) a construção. Erros ficam no status, sem derrubar o servidor.
+// Inicia (ou reaproveita) a construção. Erros ficam no status, sem derrubar o
+// servidor; a próxima tentativa só vem depois de REFRESH_MS (ex.: a internet
+// voltou para baixar o modelo), senão cada busca recomeçaria e esconderia o erro.
 export function atualizarIndice(): Promise<void> {
     construcao ??= construirIndice()
         .catch(error => {
             status.estado = 'erro';
             status.erro = error instanceof Error ? error.message : String(error);
+            ultimaAtualizacao = Date.now();
             console.error('Falha no índice semântico:', status.erro);
         })
         .finally(() => { construcao = undefined; });

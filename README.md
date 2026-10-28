@@ -14,20 +14,12 @@ Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para ap
 
 ### 1. Pré-requisitos
 
-- **Node.js 22.18 ou mais novo** — confira com `node -v` (o servidor roda TypeScript direto, sem build)
+- **Node.js 22.18 ou mais novo** — confira com `node -v`
 - **VS Code** com **GitHub Copilot** (o plano Free funciona) ou outro cliente MCP
-- **Git**
 
-### 2. Baixe e instale
+### 2. Não precisa baixar nada
 
-```bash
-git clone https://github.com/wasinskivini/postgrad-study-mcp.git
-cd postgrad-study-mcp
-npm install
-npm test        # opcional: confere se está tudo funcionando
-```
-
-Guarde o caminho completo da pasta: rode `pwd` (Mac/Linux) ou `cd` (Windows).
+O servidor está no [npm](https://www.npmjs.com/package/postgrad-study-mcp): o VS Code baixa e roda sozinho com `npx` quando você configurar o passo 4. Para mexer no código, veja [A partir do código-fonte](#a-partir-do-código-fonte).
 
 ### 3. Monte sua pasta de estudos
 
@@ -48,15 +40,13 @@ Não precisa reorganizar nada: aponte para a pasta onde você já guarda o mater
 
 Abra `Cmd+Shift+P` (Mac) / `Ctrl+Shift+P` (Windows/Linux) → **MCP: Open User Configuration** e adicione o servidor dentro de `"servers"`. Configurando no nível de usuário, ele fica disponível em **todos** os projetos.
 
-**Mac / Linux**
-
 ```json
 {
   "servers": {
     "postgrad-study-mcp": {
       "type": "stdio",
-      "command": "node",
-      "args": ["--experimental-strip-types", "/Users/seu-usuario/postgrad-study-mcp/src/index.ts"],
+      "command": "npx",
+      "args": ["-y", "postgrad-study-mcp@latest"],
       "env": {
         "NOTES_DIR": "/Users/seu-usuario/Documents/Pós IA",
         "INCLUDE_PDF": "true"
@@ -66,25 +56,9 @@ Abra `Cmd+Shift+P` (Mac) / `Ctrl+Shift+P` (Windows/Linux) → **MCP: Open User C
 }
 ```
 
-**Windows** (use `/` ou `\\` nos caminhos)
+No Windows, use `/` ou `\\` no caminho: `"NOTES_DIR": "C:/Users/seu-usuario/Documents/Pos IA"`. O caminho precisa ser **absoluto**: o servidor roda fora de qualquer projeto.
 
-```json
-{
-  "servers": {
-    "postgrad-study-mcp": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["--experimental-strip-types", "C:/Users/seu-usuario/postgrad-study-mcp/src/index.ts"],
-      "env": {
-        "NOTES_DIR": "C:/Users/seu-usuario/Documents/Pos IA",
-        "INCLUDE_PDF": "true"
-      }
-    }
-  }
-}
-```
-
-Os caminhos precisam ser **absolutos**: o servidor roda fora da pasta do projeto.
+O `@latest` faz o `npx` conferir se há versão nova a cada início. Na primeira vez ele baixa o pacote e as dependências (alguns MB), por isso o servidor pode demorar alguns segundos para subir.
 
 ### 5. Inicie e teste
 
@@ -98,8 +72,8 @@ Na primeira chamada de cada tool o VS Code pede permissão — clique em **Allow
 
 | Sintoma | Causa e solução |
 |---|---|
-| `spawn node ENOENT` ou "The command node was not found" | O VS Code não achou o Node no PATH — comum com **nvm**, que só configura o PATH no terminal. Use o caminho absoluto do binário em `command` (veja com `which node` / `where node`) ou abra o VS Code pelo terminal com `code .` |
-| `ERR_UNKNOWN_FILE_EXTENSION ".ts"` | Node antigo. Atualize para 22.18+ |
+| `spawn npx ENOENT` ou "The command npx was not found" | O VS Code não achou o Node no PATH — comum com **nvm**, que só configura o PATH no terminal. Use o caminho absoluto em `command` (veja com `which npx` / `where npx`) ou abra o VS Code pelo terminal com `code .` |
+| Erro de sintaxe ou `ERR_UNKNOWN_FILE_EXTENSION ".ts"` | Node antigo. Atualize para 22.18+ |
 | Servidor aparece mas não acha nada | Confira o `NOTES_DIR` (caminho absoluto, pasta existe). Lembre que a busca é por **texto literal**: tente outra palavra |
 | "Language model unavailable" no chat | Problema do Copilot, não do servidor: atualize o VS Code e confira o login/plano do Copilot |
 | O modelo responde sem usar o servidor | Seja explícito: "consulte minhas anotações sobre…" ou cite a tool com `#buscar_anotacao` |
@@ -194,11 +168,27 @@ A busca normal é **literal**: procurar "vetor" não acha um trecho que só fala
 
 Ela usa **embeddings**, o mesmo "R" do RAG: cada trecho das suas anotações e PDFs vira um vetor de números, e a busca devolve os trechos com o vetor mais parecido com o da pergunta. Quem gera os vetores é um **modelo de embeddings** pequeno ([multilingual-e5-small](https://huggingface.co/intfloat/multilingual-e5-small), licença MIT), que roda **dentro do servidor, no seu computador**. Ele não escreve texto nem responde nada, e não precisa de Ollama nem de chave de API.
 
-Para ligar, adicione no `env` do `mcp.json`:
+Para ligar, a biblioteca de embeddings entra como um segundo pacote no `npx` e a variável `SEMANTIC_SEARCH` no `env`:
 
 ```json
-"SEMANTIC_SEARCH": "true"
+"postgrad-study-mcp": {
+  "type": "stdio",
+  "command": "npx",
+  "args": [
+    "-y",
+    "--package=postgrad-study-mcp@latest",
+    "--package=@huggingface/transformers@4.3.1",
+    "postgrad-study-mcp"
+  ],
+  "env": {
+    "NOTES_DIR": "/Users/seu-usuario/Documents/Pós IA",
+    "INCLUDE_PDF": "true",
+    "SEMANTIC_SEARCH": "true"
+  }
+}
 ```
+
+A partir do código-fonte, basta o `"SEMANTIC_SEARCH": "true"`: o `npm install` já instala a biblioteca.
 
 O que acontece:
 
@@ -208,7 +198,7 @@ O que acontece:
 
 Código **não** entra no índice: nomes como `registerTool` já são termos exatos, e a busca literal resolve melhor.
 
-Custos e limites: a biblioteca ([transformers.js](https://huggingface.co/docs/transformers.js)) é instalada junto pelo `npm install` como dependência **opcional** (~470 MB em `node_modules`); se a instalação dela falhar no seu sistema, o resto do servidor funciona normalmente. Cada busca devolve até 8 trechos de 500 caracteres.
+Custos e limites: a biblioteca ([transformers.js](https://huggingface.co/docs/transformers.js)) ocupa ~470 MB, por isso **não** vem junto com o pacote: só baixa quem acrescentar o segundo `--package`. Sem ela, o resto do servidor funciona normalmente e `buscar_por_significado` explica o que falta. Cada busca devolve até 8 trechos de 500 caracteres.
 
 ---
 
@@ -271,7 +261,9 @@ tests/
   helpers.ts   # PASSO 5.1 — cliente MCP de teste (sobe o servidor de verdade)
   pdf.ts       # PASSO 5.2 — gera PDFs mínimos para os testes
   mcp.test.ts  # PASSO 5.3 — testes de ponta a ponta
-  semantic.test.ts # PASSO 5.4 — testes da busca semântica
+  semantic.test.ts # PASSO 5.4 — busca semântica sem o modelo (trechos, similaridade)
+  semantic.model.ts # PASSO 5.5 — busca semântica com o modelo de verdade
+  pacote.smoke.ts  # PASSO 5.6 — instala o pacote do npm numa pasta vazia e sobe o servidor
   fixtures/    # anotações de exemplo
 ```
 
@@ -309,13 +301,29 @@ Depois disso o modelo decide se lê as páginas (`ler_anotacao` → PASSO 2.5 �
 
 ## Atualizando
 
+Com `postgrad-study-mcp@latest` no `mcp.json`, basta reiniciar o servidor em **MCP: List Servers**: o `npx` baixa a versão nova sozinho.
+
+---
+
+## A partir do código-fonte
+
+Para estudar o código, contribuir ou testar mudanças antes de publicar:
+
 ```bash
+git clone https://github.com/wasinskivini/postgrad-study-mcp.git
 cd postgrad-study-mcp
-git pull
 npm install
+npm test
 ```
 
-Depois reinicie o servidor em **MCP: List Servers**.
+No `mcp.json`, troque `command` e `args` pelo Node rodando o TypeScript direto (sem build):
+
+```json
+"command": "node",
+"args": ["/Users/seu-usuario/postgrad-study-mcp/src/index.ts"]
+```
+
+Para atualizar: `git pull && npm install` e reinicie o servidor.
 
 ---
 
@@ -323,17 +331,19 @@ Depois reinicie o servidor em **MCP: List Servers**.
 
 | Script | Descrição |
 |---|---|
-| `npm start` | Inicia o servidor |
+| `npm start` | Inicia o servidor direto do TypeScript |
+| `npm run build` | Compila para JavaScript em `dist/` (o que vai para o npm; roda sozinho no `npm pack`/`npm publish`) |
 | `npm run dev` | Inicia com file-watch e inspector do Node.js |
 | `npm test` | Roda os testes de integração |
 | `npm run typecheck` | Verifica os tipos com `tsc` (o Node só remove os tipos, não os checa) |
 | `npm run test:dev` | Testes em modo watch |
 | `npm run test:semantic` | Testes da busca semântica com o modelo de verdade (baixa ~145 MB na primeira vez) |
+| `npm run test:pack` | Gera o pacote do npm, instala numa pasta vazia e sobe o servidor por ele |
 | `npm run mcp:inspect` | Abre o MCP Inspector usando as anotações de exemplo de `tests/fixtures` |
 
 Os testes sobem o servidor via stdio com uma cópia temporária de `tests/fixtures/notas` e um `DATA_DIR` temporário, então não tocam nos seus dados reais. Os casos de ataque (`.env`, symlink para fora, pasta oculta, segredo no código, arquivo com injeção e caracteres invisíveis) e os PDFs de teste (com várias páginas, escaneado e com injeção) são criados na hora pelos testes.
 
-A cada push na `main` e em todo pull request, o GitHub Actions roda `typecheck` e `test` no Ubuntu e no macOS, com Node 22 e 24, e um job separado roda `test:semantic` com o modelo de verdade.
+A cada push na `main` e em todo pull request, o GitHub Actions roda `typecheck` e `test` no Ubuntu, no macOS e no Windows, com Node 22 e 24. Dois jobs separados testam o pacote do npm (todos os testes contra o `dist/` compilado, com `TEST_DIST=1`, mais o `test:pack`) e a busca semântica com o modelo de verdade.
 
 ### Contribuindo
 

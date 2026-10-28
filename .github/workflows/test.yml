@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         node: [22.x, 24.x]
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +22,27 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+
+  # O pacote do npm: compila para dist/, roda todos os testes contra o
+  # JavaScript compilado e instala o .tgz numa pasta vazia (tests/pacote.smoke.ts).
+  pacote:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+        env:
+          TEST_DIST: 1
+      - run: npm run test:pack
 
   # Busca semântica com o modelo de verdade (PASSO 6). Fica num job separado
   # porque baixa ~145 MB; o cache guarda o modelo entre as execuções.

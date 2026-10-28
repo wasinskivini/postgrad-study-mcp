@@ -1,0 +1,4 @@
+# Fixtures e código sempre com LF, inclusive no Windows: os testes comparam
+# linhas e o checkout com CRLF quebraria as comparações.
+* text=auto eol=lf
+*.pdf binary

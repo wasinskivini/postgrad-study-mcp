@@ -31,6 +31,7 @@
  *   2.10 prompts gerar_quiz e plano_de_revisao
  *   2.11 tool opcional buscar_por_significado (SEMANTIC_SEARCH=true)
  */
+import { readFileSync } from 'node:fs'
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 
 // Zod descreve e valida os parâmetros. O SDK converte esses schemas em JSON
@@ -57,10 +58,13 @@ registrar_duvida, marcar_aula_concluida e resolver_duvida só devem ser chamadas
 Para consultar as dúvidas registradas e as aulas concluídas, use listar_duvidas.`
 
 // Nome e versão aparecem para o cliente; no VS Code o nome vira prefixo das
-// tools e dos prompts (ex.: /mcp.postgrad-study-mcp.gerar_quiz).
+// tools e dos prompts (ex.: /mcp.postgrad-study-mcp.gerar_quiz). A versão vem
+// do package.json, que fica uma pasta acima tanto de src/ quanto de dist/.
+const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+
 export const server = new McpServer({
     name: 'postgrad-study-mcp',
-    version: '0.1.0'
+    version
 }, {
     instructions: INSTRUCTIONS
 })

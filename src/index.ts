@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * ============================================================================
  * PASSO 1 — PONTO DE ENTRADA (comece a leitura por aqui)
@@ -5,7 +6,11 @@
  *
  * Este é o arquivo que o cliente MCP (ex.: VS Code/Copilot) executa:
  *
- *     node --experimental-strip-types /caminho/postgrad-study-mcp/src/index.ts
+ *     npx -y postgrad-study-mcp                       (pacote do npm, compilado em dist/)
+ *     node /caminho/postgrad-study-mcp/src/index.ts   (direto do código-fonte)
+ *
+ * A primeira linha (#!) diz ao sistema para rodar o arquivo com o Node quando
+ * ele é chamado como comando (o "bin" do package.json).
  *
  * Ele só faz uma coisa: liga o servidor (montado no PASSO 2, em mcp.ts) a um
  * "transporte" — o canal por onde as mensagens do protocolo trafegam.

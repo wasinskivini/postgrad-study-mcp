@@ -1,0 +1,14 @@
+{
+  // Usado só por "npm run build": gera o JavaScript em dist/ para o pacote do
+  // npm. O Node não executa .ts de dentro de node_modules, então quem instala
+  // com npx recebe o código já compilado. rewriteRelativeImportExtensions troca
+  // os imports "./mcp.ts" por "./mcp.js" no resultado.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rewriteRelativeImportExtensions": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"]
+}
