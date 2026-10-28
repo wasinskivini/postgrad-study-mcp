@@ -74,7 +74,7 @@ git commit -m "feat: descreve o que mudou"
 git push -u origin feat/nome-curto
 ```
 
-Abra o pull request para a `main` deste repositório. O template do PR traz um checklist — preencha. O GitHub Actions roda o type check e os testes no Ubuntu e no macOS (Node 22 e 24); o merge só é liberado com tudo verde.
+Abra o pull request para a `main` deste repositório. O template do PR traz um checklist — preencha. O GitHub Actions roda o type check e os testes no Ubuntu, no macOS e no Windows (Node 22 e 24), além do teste do pacote do npm; o merge só é liberado com tudo verde.
 
 > Na sua **primeira** contribuição, o mantenedor precisa aprovar a execução do Actions — é uma proteção padrão do GitHub para PRs de forks.
 

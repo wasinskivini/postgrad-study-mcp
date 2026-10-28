@@ -100,6 +100,12 @@ describe('Postgrad Study MCP', () => {
 
     // Funcionalidades principais: PASSO 2.3 a 2.10.
     describe('estudo', () => {
+        it('should report the version from package.json', async () => {
+            const { readFile } = await import('node:fs/promises')
+            const { version } = JSON.parse(await readFile('package.json', 'utf8'))
+            assert.strictEqual(client.getServerVersion()?.version, version)
+        })
+
         it('should list modules', async () => {
             const result = await callTool(client, 'listar_modulos')
             assert.deepStrictEqual(result.structuredContent.modulos, ['modulo01', 'modulo03'])
