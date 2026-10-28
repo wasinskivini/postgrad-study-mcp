@@ -35,7 +35,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 
 // Zod descreve e valida os parâmetros. O SDK converte esses schemas em JSON
 // Schema e os envia ao cliente na lista de tools (tools/list).
-import { z } from 'zod/v3'
+import { z } from 'zod'
 import {
     addDuvida, config, getDuvidas, getDuvidasNumeradas, getProgresso, listModules,
     markAulaConcluida, MAX_PDF_PAGES_PER_READ, readNote, resolverDuvida, searchNotes, TIPOS, type Tipo,
@@ -323,7 +323,7 @@ server.registerTool(
                 criadaEm: z.string(),
                 resolvida: z.boolean(),
             })).describe("Dúvidas não resolvidas"),
-            progresso: z.record(z.array(z.string())).describe("Aulas concluídas por módulo"),
+            progresso: z.record(z.string(), z.array(z.string())).describe("Aulas concluídas por módulo"),
         }
     },
     async () => {
