@@ -223,6 +223,18 @@ O servidor limita o que manda ao modelo — até 20 trechos de 200 caracteres po
 
 ---
 
+## O que sai do seu computador
+
+| Parte | Onde roda | Envia seu material para fora? |
+|---|---|---|
+| Este servidor (busca literal, leitura, dúvidas, progresso) | No seu computador | Não |
+| Busca por significado (modelo `multilingual-e5-small`) | No seu computador | Não. Só baixa o modelo uma vez do Hugging Face |
+| O modelo do seu cliente MCP (Copilot, no caso do VS Code) | Na nuvem | **Sim**, apenas os trechos que as tools devolvem |
+
+O modelo de busca por significado não é um LLM de conversa: ele só transforma texto em números para comparar significados, e isso acontece localmente. O que sai do computador é o resultado que o Copilot lê para responder, como acontece com qualquer arquivo que ele abre.
+
+O servidor reduz esse envio: devolve trechos em vez de arquivos inteiros e troca segredos por `[REDACTED]` antes de responder. O que acontece com os dados depois disso depende da política do seu cliente (por exemplo, se o Copilot da sua conta ou organização permite usar os dados para treino). Veja a seção Segurança abaixo.
+
 ## Segurança
 
 Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP (na nuvem, no caso do Copilot). Por isso o servidor aplica várias camadas de proteção:
