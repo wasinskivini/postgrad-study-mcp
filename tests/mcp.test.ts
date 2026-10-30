@@ -112,41 +112,49 @@ describe('Postgrad Study MCP', () => {
         })
 
         it('should search notes across modules', async () => {
-            const result = await callTool(client, 'buscar_anotacao', { termo: 'RESOURCES' })
+            const result = await callTool(client, 'buscar_material', { consulta: 'RESOURCES' })
             const [first] = result.structuredContent.resultados
             assert.strictEqual(first.arquivo, join('modulo03', 'mcp.md'))
             assert.strictEqual(first.linha, 3)
         })
 
         it('should search inside code files', async () => {
-            const result = await callTool(client, 'buscar_anotacao', { termo: 'registerResource' })
+            const result = await callTool(client, 'buscar_material', { consulta: 'registerResource' })
             assert.strictEqual(result.structuredContent.resultados[0].arquivo, join('modulo03', 'server.ts'))
         })
 
         it('should restrict search to a module', async () => {
-            const result = await callTool(client, 'buscar_anotacao', { termo: 'resources', modulo: 'modulo01' })
+            const result = await callTool(client, 'buscar_material', { consulta: 'resources', modulo: 'modulo01' })
             assert.deepStrictEqual(result.structuredContent.resultados, [])
         })
 
         it('should return at most 3 results per file', async () => {
-            const result = await callTool(client, 'buscar_anotacao', { termo: 'repeticao' })
+            const result = await callTool(client, 'buscar_material', { consulta: 'repeticao' })
             assert.strictEqual(result.structuredContent.resultados.length, 3)
         })
 
         it('should list notes before code', async () => {
             // O código está em modulo01 (percorrido antes de modulo03), mas a anotação vem primeiro.
-            const result = await callTool(client, 'buscar_anotacao', { termo: 'prioridade' })
+            const result = await callTool(client, 'buscar_material', { consulta: 'prioridade' })
             const arquivos = result.structuredContent.resultados.map((r: { arquivo: string }) => r.arquivo)
             assert.deepStrictEqual(arquivos, [join('modulo03', 'prioridade.md'), join('modulo01', 'a-codigo.ts')])
         })
 
-        it('should not offer semantic search when it is off', async () => {
+        it('should expose the same seven tools, with or without semantic search', async () => {
             const { tools } = await client.listTools()
-            assert.ok(!tools.some(t => t.name === 'buscar_por_significado'))
+            assert.deepStrictEqual(tools.map(t => t.name).sort(), [
+                'buscar_material', 'ler_material', 'listar_modulos', 'marcar_aula_concluida',
+                'registrar_duvida', 'resolver_duvida', 'ver_estudos',
+            ])
+        })
+
+        it('should tell which search found each result', async () => {
+            const result = await callTool(client, 'buscar_material', { consulta: 'RESOURCES' })
+            assert.ok(result.structuredContent.resultados.every((r: { origem: string }) => r.origem === 'literal'))
         })
 
         it('should read a note wrapped as untrusted data', async () => {
-            const result = await callTool(client, 'ler_anotacao', { arquivo: 'modulo01/redes-neurais.md' })
+            const result = await callTool(client, 'ler_material', { arquivo: 'modulo01/redes-neurais.md' })
             assert.match(result.content[0].text, /backpropagation/)
             assert.match(result.content[0].text, /<dados_nao_confiaveis id="[0-9a-f]{12}">/)
             assert.doesNotMatch(result.content[0].text, /ALERTA/)
@@ -165,7 +173,7 @@ describe('Postgrad Study MCP', () => {
         })
 
         it('should list doubts and progress as a tool', async () => {
-            const result = await callTool(client, 'listar_duvidas')
+            const result = await callTool(client, 'ver_estudos')
             assert.strictEqual(result.structuredContent.duvidas[0].texto, 'Quando usar resource vs tool?')
             assert.deepStrictEqual(result.structuredContent.progresso, { modulo03: ['05'] })
             assert.match(result.content[0].text, /<dados_nao_confiaveis id="[0-9a-f]{12}">/)
@@ -213,14 +221,14 @@ describe('Postgrad Study MCP', () => {
         })
 
         it('should number doubts and resolve them by number', async () => {
-            const antes = await callTool(client, 'listar_duvidas')
+            const antes = await callTool(client, 'ver_estudos')
             assert.strictEqual(antes.structuredContent.duvidas[0].numero, 1)
             assert.match(antes.content[0].text, /#1 \[modulo03\]/)
 
             const result = await callTool(client, 'resolver_duvida', { numero: 1 })
             assert.match(result.content[0].text, /#1 marcada como resolvida/)
 
-            const depois = await callTool(client, 'listar_duvidas')
+            const depois = await callTool(client, 'ver_estudos')
             assert.deepStrictEqual(depois.structuredContent.duvidas, [])
             // Continua no histórico (resource), só que como resolvida.
             const [duvida] = await readJsonResource(client, 'pos://duvidas')
@@ -237,7 +245,7 @@ describe('Postgrad Study MCP', () => {
     // PDFs: PASSO 3.4 e 3.8 (extração, páginas, limites) e o filtro "tipos" (2.4).
     describe('pdf', () => {
         it('should find terms inside PDFs with the page number', async () => {
-            const result = await callTool(client, 'buscar_anotacao', { termo: 'chunking' })
+            const result = await callTool(client, 'buscar_material', { consulta: 'chunking' })
             const [first] = result.structuredContent.resultados
             assert.strictEqual(first.arquivo, join('modulo03', 'aula-rag.pdf'))
             assert.strictEqual(first.pagina, 2)
@@ -245,14 +253,14 @@ describe('Postgrad Study MCP', () => {
         })
 
         it('should filter search by type', async () => {
-            const onlyPdf = await callTool(client, 'buscar_anotacao', { termo: 'tools executam', tipos: ['pdf'] })
-            const onlyNotes = await callTool(client, 'buscar_anotacao', { termo: 'tools executam', tipos: ['anotacoes'] })
+            const onlyPdf = await callTool(client, 'buscar_material', { consulta: 'tools executam', tipos: ['pdf'] })
+            const onlyNotes = await callTool(client, 'buscar_material', { consulta: 'tools executam', tipos: ['anotacoes'] })
             assert.deepStrictEqual(onlyPdf.structuredContent.resultados.map((r: any) => r.arquivo), [join('modulo03', 'aula-rag.pdf')])
             assert.deepStrictEqual(onlyNotes.structuredContent.resultados.map((r: any) => r.arquivo), [join('modulo03', 'mcp.md')])
         })
 
         it('should read the first pages by default and say how many exist', async () => {
-            const { content: [{ text }] } = await callTool(client, 'ler_anotacao', { arquivo: 'modulo03/aula-rag.pdf' })
+            const { content: [{ text }] } = await callTool(client, 'ler_material', { arquivo: 'modulo03/aula-rag.pdf' })
             assert.match(text, /--- página 1 de 7 ---/)
             assert.match(text, /--- página 5 de 7 ---/)
             assert.doesNotMatch(text, /página 6 de 7/)
@@ -260,31 +268,31 @@ describe('Postgrad Study MCP', () => {
         })
 
         it('should read a specific page range', async () => {
-            const { content: [{ text }] } = await callTool(client, 'ler_anotacao', { arquivo: 'modulo03/aula-rag.pdf', paginas: '6' })
+            const { content: [{ text }] } = await callTool(client, 'ler_material', { arquivo: 'modulo03/aula-rag.pdf', paginas: '6' })
             assert.match(text, /Reranking ordena os trechos/)
             assert.doesNotMatch(text, /Chunking/)
         })
 
         it('should limit how many pages are read at once', async () => {
-            const result = await callTool(client, 'ler_anotacao', { arquivo: 'modulo03/aula-rag.pdf', paginas: '1-6' })
+            const result = await callTool(client, 'ler_material', { arquivo: 'modulo03/aula-rag.pdf', paginas: '1-6' })
             assert.strictEqual(result.isError, true)
             assert.match(result.content[0].text, /Máximo de 5 páginas/)
         })
 
         it('should reject pages that do not exist', async () => {
-            const result = await callTool(client, 'ler_anotacao', { arquivo: 'modulo03/aula-rag.pdf', paginas: '9' })
+            const result = await callTool(client, 'ler_material', { arquivo: 'modulo03/aula-rag.pdf', paginas: '9' })
             assert.strictEqual(result.isError, true)
             assert.match(result.content[0].text, /tem 7 página/)
         })
 
         it('should explain when a PDF has no text', async () => {
-            const result = await callTool(client, 'ler_anotacao', { arquivo: 'modulo03/escaneado.pdf' })
+            const result = await callTool(client, 'ler_material', { arquivo: 'modulo03/escaneado.pdf' })
             assert.strictEqual(result.isError, true)
             assert.match(result.content[0].text, /sem texto extraível/)
         })
 
         it('should flag prompt injection inside PDFs', async () => {
-            const { content: [{ text }] } = await callTool(client, 'ler_anotacao', { arquivo: 'modulo01/slides-maliciosos.pdf' })
+            const { content: [{ text }] } = await callTool(client, 'ler_material', { arquivo: 'modulo01/slides-maliciosos.pdf' })
             assert.match(text, /ALERTA: possível prompt injection/)
         })
 
@@ -301,13 +309,13 @@ describe('Postgrad Study MCP', () => {
             })
 
             it('should skip PDFs in search and explain why', async () => {
-                const result = await callTool(noPdfClient, 'buscar_anotacao', { termo: 'chunking', tipos: ['pdf'] })
+                const result = await callTool(noPdfClient, 'buscar_material', { consulta: 'chunking', tipos: ['pdf'] })
                 assert.deepStrictEqual(result.structuredContent.resultados, [])
                 assert.match(result.content[0].text, /INCLUDE_PDF=false/)
             })
 
             it('should refuse to read PDFs', async () => {
-                const result = await callTool(noPdfClient, 'ler_anotacao', { arquivo: 'modulo03/aula-rag.pdf' })
+                const result = await callTool(noPdfClient, 'ler_material', { arquivo: 'modulo03/aula-rag.pdf' })
                 assert.strictEqual(result.isError, true)
                 assert.match(result.content[0].text, /não permitido/)
             })
@@ -327,19 +335,19 @@ describe('Postgrad Study MCP', () => {
 
         for (const [label, arquivo, expected] of blocked) {
             it(`should block reading ${label}`, async () => {
-                const result = await callTool(client, 'ler_anotacao', { arquivo })
+                const result = await callTool(client, 'ler_material', { arquivo })
                 assert.strictEqual(result.isError, true)
                 assert.match(result.content[0].text, expected)
             })
         }
 
         it('should never return .env content in search', async () => {
-            const result = await callTool(client, 'buscar_anotacao', { termo: 'OPENAI_API_KEY' })
+            const result = await callTool(client, 'buscar_material', { consulta: 'OPENAI_API_KEY' })
             assert.deepStrictEqual(result.structuredContent.resultados, [])
         })
 
         it('should redact secrets from code', async () => {
-            const result = await callTool(client, 'ler_anotacao', { arquivo: 'modulo03/server.ts' })
+            const result = await callTool(client, 'ler_material', { arquivo: 'modulo03/server.ts' })
             assert.doesNotMatch(result.content[0].text, /sk-chave-falsa/)
             assert.match(result.content[0].text, /apiKey = "\[REDACTED\]"/)
         })
@@ -348,7 +356,7 @@ describe('Postgrad Study MCP', () => {
     // As camadas do PASSO 4 e as validações do PASSO 2.
     describe('prompt injection', () => {
         it('should flag injection attempts when reading a file', async () => {
-            const result = await callTool(client, 'ler_anotacao', { arquivo: 'modulo03/aula-maliciosa.md' })
+            const result = await callTool(client, 'ler_material', { arquivo: 'modulo03/aula-maliciosa.md' })
             const text = result.content[0].text
             assert.match(text, /ALERTA: possível prompt injection/)
             assert.match(text, /ignorar instruções anteriores/)
@@ -356,18 +364,18 @@ describe('Postgrad Study MCP', () => {
         })
 
         it('should strip invisible characters', async () => {
-            const result = await callTool(client, 'ler_anotacao', { arquivo: 'modulo03/aula-maliciosa.md' })
+            const result = await callTool(client, 'ler_material', { arquivo: 'modulo03/aula-maliciosa.md' })
             assert.match(result.content[0].text, /texto com caracteres invisíveis/)
         })
 
         it('should not let the file close the untrusted block', async () => {
-            const result = await callTool(client, 'ler_anotacao', { arquivo: 'modulo03/aula-maliciosa.md' })
+            const result = await callTool(client, 'ler_material', { arquivo: 'modulo03/aula-maliciosa.md' })
             const closings = result.content[0].text.match(/<\/dados_nao_confiaveis/g) ?? []
             assert.strictEqual(closings.length, 1)
         })
 
         it('should flag suspicious lines in search results', async () => {
-            const result = await callTool(client, 'buscar_anotacao', { termo: 'instruções anteriores' })
+            const result = await callTool(client, 'buscar_material', { consulta: 'instruções anteriores' })
             assert.ok(result.structuredContent.resultados[0].alertas.length > 0)
             assert.match(result.content[0].text, /\[⚠️\]/)
         })
@@ -402,11 +410,11 @@ describe('Postgrad Study MCP', () => {
             const annotations = Object.fromEntries(tools.map(t => [t.name, t.annotations?.readOnlyHint]))
             assert.deepStrictEqual(annotations, {
                 listar_modulos: true,
-                buscar_anotacao: true,
-                ler_anotacao: true,
+                buscar_material: true,
+                ler_material: true,
                 registrar_duvida: false,
                 marcar_aula_concluida: false,
-                listar_duvidas: true,
+                ver_estudos: true,
                 resolver_duvida: false,
             })
         })

@@ -29,12 +29,13 @@
  *   6.3  dividir arquivos em trechos
  *   6.4  o índice: construir, atualizar e salvar
  *   6.5  buscar por similaridade
+ *   6.6  busca híbrida: junta a busca literal e esta (usada pela tool buscar_material)
  */
 import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import {
     config, enabledTypes, listNoteFiles, readSearchableLines, resolveInsideNotes,
-    typeOf, type Resultado, type Tipo,
+    searchNotes, typeOf, type Resultado, type Tipo,
 } from './service.ts';
 import { prepareUntrusted } from './safety.ts';
 
@@ -76,6 +77,8 @@ type ArquivoIndexado = { mtimeMs: number; size: number; trechos: (Trecho & { vet
 // "passage: " para trechos. Sem eles a qualidade cai.
 let embedderPromise: Promise<Embedder> | undefined;
 
+// Carrega o modelo uma única vez e devolve a função que transforma textos em
+// vetores. A promessa fica guardada: as buscas seguintes reaproveitam o modelo.
 function loadEmbedder(): Promise<Embedder> {
     embedderPromise ??= (async () => {
         const { pipeline, env } = await import('@huggingface/transformers').catch(() => {
@@ -136,6 +139,8 @@ export const status = { estado: 'parado' as 'parado' | 'construindo' | 'pronto' 
 let construcao: Promise<void> | undefined;
 let ultimaAtualizacao = 0;
 
+// No arquivo do índice, cada vetor vira texto base64 (números de 4 bytes): fica
+// várias vezes menor do que uma lista de números em JSON.
 const toBase64 = (vetor: number[]) => Buffer.from(new Float32Array(vetor).buffer).toString('base64');
 const fromBase64 = (texto: string) => {
     const bytes = Buffer.from(texto, 'base64');
@@ -144,6 +149,8 @@ const fromBase64 = (texto: string) => {
 // Vetores decodificados ficam em cache para a busca não converter tudo de novo.
 const vetores = new Map<string, Float32Array[]>();
 
+// Lê o índice salvo em DATA_DIR. Se ele for de outra versão ou de outro modelo,
+// é ignorado e refeito, porque vetores de modelos diferentes não se comparam.
 async function carregarIndice(): Promise<void> {
     try {
         const salvo = JSON.parse(await readFile(join(config.dataDir, INDEX_FILE), 'utf8'));
@@ -154,6 +161,8 @@ async function carregarIndice(): Promise<void> {
     }
 }
 
+// Grava o índice em DATA_DIR com permissão 600: ele contém trechos das suas
+// anotações, então só o seu usuário do sistema deve ler.
 async function salvarIndice(): Promise<void> {
     await mkdir(config.dataDir, { recursive: true, mode: 0o700 });
     const dados = { versao: INDEX_VERSION, modelo: `${MODEL}@${MODEL_REVISION}`, arquivos: Object.fromEntries(indice) };
@@ -231,12 +240,15 @@ export function similaridade(a: ArrayLike<number>, b: ArrayLike<number>): number
     return soma;
 }
 
+// Devolve os trechos mais parecidos com a pergunta, do mais para o menos parecido
+// (passos a a d abaixo). Se o índice ainda está sendo montado, responde com o que
+// já existe e um aviso.
 export async function semanticSearch(pergunta: string, modulo?: string, tipos?: Tipo[]): Promise<{ resultados: ResultadoSemantico[]; aviso?: string }> {
     // Passo a): mantém o índice em dia (em segundo plano, sem esperar).
     if (status.estado !== 'construindo' && Date.now() - ultimaAtualizacao > REFRESH_MS) void atualizarIndice();
     if (status.estado === 'erro' && !indice.size) throw new Error(`Busca semântica indisponível: ${status.erro}`);
     const aviso = status.estado === 'construindo'
-        ? `Índice semântico em construção (${status.feitos} de ${status.total} arquivos): os resultados podem estar incompletos. Use buscar_anotacao enquanto isso.`
+        ? `Índice semântico em construção (${status.feitos} de ${status.total} arquivos): os resultados por significado podem estar incompletos`
         : undefined;
     if (!indice.size) return { resultados: [], aviso };
 
@@ -255,7 +267,7 @@ export async function semanticSearch(pergunta: string, modulo?: string, tipos?: 
         dados.trechos.forEach((t, i) => candidatos.push({
             arquivo, linha: t.linha, pagina: t.pagina, alertas: t.alertas,
             // Só os primeiros 500 caracteres vão para o modelo; o resto ele lê
-            // com ler_anotacao, se precisar.
+            // com ler_material, se precisar.
             trecho: t.texto.slice(0, 500),
             similaridade: Math.round(similaridade(vetorPergunta, vetoresArquivo[i]) * 1000) / 1000,
         }));
@@ -277,4 +289,88 @@ export async function semanticSearch(pergunta: string, modulo?: string, tipos?: 
         if (resultados.length >= MAX_SEMANTIC_RESULTS) break;
     }
     return { resultados, aviso };
+}
+
+// ----------------------------------------------------------------------------
+// 6.6 — BUSCA HÍBRIDA (usada pela tool buscar_material, PASSO 2.4)
+// ----------------------------------------------------------------------------
+// Por que juntar as duas buscas? Quem pergunta quer "achar isso no meu material";
+// escolher entre literal e semântica é detalhe de implementação. Cada uma erra
+// onde a outra acerta:
+//   literal    → acha nomes exatos (registerTool, OPENAI_API_KEY), não entende sinônimos
+//   semântica  → acha o assunto com outras palavras, mas ignora o nome exato
+//
+// A junção usa Reciprocal Rank Fusion (RRF): cada lista dá a cada resultado a
+// pontuação 1 / (60 + posição), e as pontuações se somam. Não precisa comparar
+// "similaridade 0.83" com "linha que contém o termo", que não têm a mesma escala.
+export type Origem = 'literal' | 'significado' | 'ambas';
+export type ResultadoHibrido = Resultado & { origem: Origem; similaridade?: number };
+
+// 60 é o valor clássico do RRF: amortece a diferença entre o 1º e o 5º lugar.
+const RRF_K = 60;
+const MAX_HYBRID_RESULTS = 20;
+const MAX_HYBRID_PER_FILE = 3;
+
+// Função pura (sem arquivos nem modelo): é testada sozinha.
+export function fundir(literais: Resultado[], semanticos: ResultadoSemantico[]): ResultadoHibrido[] {
+    const pontos = (posicao: number) => 1 / (RRF_K + posicao);
+    // Onde duas buscas concordam (mesmo arquivo e mesma página), o resultado sobe.
+    const lugar = (r: Resultado) => `${r.arquivo}|${r.pagina ?? ''}`;
+    const melhorPosicao = (lista: Resultado[]) => {
+        const mapa = new Map<string, number>();
+        lista.forEach((r, i) => { if (!mapa.has(lugar(r))) mapa.set(lugar(r), i + 1); });
+        return mapa;
+    };
+    const naLiteral = melhorPosicao(literais);
+    const naSemantica = melhorPosicao(semanticos);
+    const bonus = (r: Resultado, outra: Map<string, number>) => outra.has(lugar(r)) ? pontos(outra.get(lugar(r))!) : 0;
+
+    // A chave inclui a linha: o mesmo trecho achado pelas duas buscas vira um só.
+    const itens = new Map<string, { resultado: ResultadoHibrido; nota: number }>();
+    literais.forEach((r, i) => {
+        itens.set(`${lugar(r)}|${r.linha}`, { resultado: { ...r, origem: 'literal' }, nota: pontos(i + 1) + bonus(r, naSemantica) });
+    });
+    semanticos.forEach((r, i) => {
+        const chave = `${lugar(r)}|${r.linha}`;
+        const existente = itens.get(chave);
+        if (existente) {
+            existente.resultado.origem = 'ambas';
+            existente.resultado.similaridade = r.similaridade;
+        } else {
+            itens.set(chave, { resultado: { ...r, origem: 'significado' }, nota: pontos(i + 1) + bonus(r, naLiteral) });
+        }
+    });
+
+    // Maior nota primeiro; no empate, a ordem de inserção (literal antes). Depois
+    // aplica o limite por arquivo, para um arquivo só não ocupar a lista inteira.
+    const ordenados = [...itens.values()].sort((a, b) => b.nota - a.nota);
+    const porArquivo = new Map<string, number>();
+    const resultados: ResultadoHibrido[] = [];
+    for (const { resultado } of ordenados) {
+        const usados = porArquivo.get(resultado.arquivo) ?? 0;
+        if (usados >= MAX_HYBRID_PER_FILE) continue;
+        porArquivo.set(resultado.arquivo, usados + 1);
+        resultados.push(resultado);
+        if (resultados.length >= MAX_HYBRID_RESULTS) break;
+    }
+    return resultados;
+}
+
+// A busca literal sempre roda. A semântica só entra com SEMANTIC_SEARCH=true e,
+// se falhar (biblioteca ausente, sem internet para baixar o modelo), a busca não
+// quebra: devolve o resultado literal com um aviso do que faltou.
+export async function buscaHibrida(consulta: string, modulo?: string, tipos?: Tipo[]): Promise<{ resultados: ResultadoHibrido[]; aviso?: string }> {
+    const literais = await searchNotes(consulta, modulo, tipos);
+    const soLiteral = (aviso?: string) => ({ resultados: literais.map((r): ResultadoHibrido => ({ ...r, origem: 'literal' })), aviso });
+    if (!config.semanticSearch) return soLiteral();
+    // Código só tem busca literal: pedir só 'codigo' dispensa a semântica.
+    const tiposSemanticos = (tipos?.length ? tipos : SEMANTIC_TYPES).filter(t => SEMANTIC_TYPES.includes(t));
+    if (!tiposSemanticos.length) return soLiteral();
+    try {
+        const { resultados: semanticos, aviso } = await semanticSearch(consulta, modulo, tiposSemanticos);
+        return { resultados: fundir(literais, semanticos), aviso };
+    } catch (error) {
+        const motivo = error instanceof Error ? error.message : String(error);
+        return soLiteral(`A busca por significado não está disponível e só a literal foi usada. ${motivo}`);
+    }
 }

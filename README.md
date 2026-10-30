@@ -63,10 +63,10 @@ O `@latest` faz o `npx` conferir se há versão nova a cada início. Na primeira
 ### 5. Inicie e teste
 
 1. `Cmd/Ctrl+Shift+P` → **MCP: List Servers** → `postgrad-study-mcp` → **Start Server**
-2. Em **Show Output**, confira se aparece `Discovered 7 tools` (8 com a busca semântica ligada)
+2. Em **Show Output**, confira se aparece `Discovered 7 tools`
 3. Abra o Copilot Chat no modo **Agent** e pergunte algo sobre o seu material
 
-Na primeira chamada de cada tool o VS Code pede permissão — clique em **Allow**. Clicando no bloco "Ran buscar_anotacao" da resposta, dá para ver exatamente o que o servidor devolveu.
+Na primeira chamada de cada tool o VS Code pede permissão — clique em **Allow**. Clicando no bloco "Ran buscar_material" da resposta, dá para ver exatamente o que o servidor devolveu.
 
 ### Problemas comuns
 
@@ -74,11 +74,11 @@ Na primeira chamada de cada tool o VS Code pede permissão — clique em **Allow
 |---|---|
 | `spawn npx ENOENT` ou "The command npx was not found" | O VS Code não achou o Node no PATH — comum com **nvm**, que só configura o PATH no terminal. Use o caminho absoluto em `command` (veja com `which npx` / `where npx`) ou abra o VS Code pelo terminal com `code .` |
 | Erro de sintaxe ou `ERR_UNKNOWN_FILE_EXTENSION ".ts"` | Node antigo. Atualize para 22.18+ |
-| Servidor aparece mas não acha nada | Confira o `NOTES_DIR` (caminho absoluto, pasta existe). Lembre que a busca é por **texto literal**: tente outra palavra |
+| Servidor aparece mas não acha nada | Confira o `NOTES_DIR` (caminho absoluto, pasta existe). Sem a [busca por significado](#busca-por-significado-opcional) ligada, a busca é por **texto literal**: tente outra palavra |
 | "Language model unavailable" no chat | Problema do Copilot, não do servidor: atualize o VS Code e confira o login/plano do Copilot |
-| O modelo responde sem usar o servidor | Seja explícito: "consulte minhas anotações sobre…" ou cite a tool com `#buscar_anotacao` |
+| O modelo responde sem usar o servidor | Seja explícito: "consulte minhas anotações sobre…" ou cite a tool com `#buscar_material` |
 | Digitando `/` não aparecem `gerar_quiz` nem `plano_de_revisao` | A conversa está numa sessão **Copilot CLI**, que não mostra prompts de MCP. Abra um chat na sessão **Local**, modo **Agent**, e digite `/mcp.postgrad` |
-| O chat leu um arquivo que o servidor bloqueia (`.zshrc`, `package.json`...) | Quem leu foi o **próprio Copilot**, com a ferramenta embutida dele (aparece "Read arquivo", não "Ran ler_anotacao"). As proteções deste servidor valem só para o que passa por ele. Para testar o servidor, cite a tool: `#ler_anotacao` |
+| O chat leu um arquivo que o servidor bloqueia (`.zshrc`, `package.json`...) | Quem leu foi o **próprio Copilot**, com a ferramenta embutida dele (aparece "Read arquivo", não "Ran ler_material"). As proteções deste servidor valem só para o que passa por ele. Para testar o servidor, cite a tool: `#ler_material` |
 | Parei o servidor e ele voltou sozinho | O VS Code reinicia servidores a cada conversa nova. Para desligar de verdade, remova a entrada do `mcp.json` |
 
 ---
@@ -89,14 +89,14 @@ Com o servidor rodando, no Copilot Chat (modo **Agent**):
 
 | Você pede | O servidor faz |
 |---|---|
-| `O que eu anotei sobre embeddings?` | `buscar_anotacao` em anotações, código e PDFs |
-| `Busque "chunking" só nos PDFs e leia a página onde aparece` | `buscar_anotacao` com `tipos: ["pdf"]` → `ler_anotacao` com `paginas` |
-| `Como foi implementado o registerTool nas aulas? Procure só no código` | `buscar_anotacao` com `tipos: ["codigo"]` → `ler_anotacao` |
+| `O que eu anotei sobre embeddings?` | `buscar_material` em anotações, código e PDFs |
+| `Busque "chunking" só nos PDFs e leia a página onde aparece` | `buscar_material` com `tipos: ["pdf"]` → `ler_material` com `paginas` |
+| `Como foi implementado o registerTool nas aulas? Procure só no código` | `buscar_material` com `tipos: ["codigo"]` → `ler_material` |
 | `Registre uma dúvida no modulo03: quando usar resource em vez de tool?` | `registrar_duvida` |
 | `Marque a aula 05 do modulo03 como concluída` | `marcar_aula_concluida` |
-| `Quais dúvidas eu ainda tenho pendentes?` | `listar_duvidas` |
+| `Quais dúvidas eu ainda tenho pendentes?` | `ver_estudos` |
 | `Já entendi a dúvida 2, pode marcar como resolvida` | `resolver_duvida` |
-| `Onde as aulas explicam como transformar texto em números?` | `buscar_por_significado` (se a busca semântica estiver ligada) |
+| `Onde as aulas explicam como transformar texto em números?` | `buscar_material` (com a busca por significado ligada, acha mesmo sem as mesmas palavras) |
 
 Os prompts aparecem digitando `/` no chat: `/mcp.postgrad-study-mcp.gerar_quiz` e `/mcp.postgrad-study-mcp.plano_de_revisao`.
 
@@ -115,13 +115,12 @@ No `plano_de_revisao`, o próprio servidor lê as suas dúvidas e o seu progress
 | Tipo | Nome | Descrição |
 |---|---|---|
 | 🔧 Tool | `listar_modulos` | Lista as pastas de módulos dentro de `NOTES_DIR` |
-| 🔧 Tool | `buscar_anotacao` | Busca um termo nas anotações, no código e nos PDFs das aulas (até 20 resultados com arquivo, linha, página e trecho), com filtro opcional por `tipos` |
-| 🔧 Tool | `ler_anotacao` | Lê uma anotação ou arquivo de código completo, ou um PDF por páginas (até 5 por vez) |
+| 🔧 Tool | `buscar_material` | Busca nas anotações, no código e nos PDFs das aulas (até 20 resultados com arquivo, linha, página e trecho), com filtro opcional por `tipos`. Aceita um nome exato ou uma pergunta; com `SEMANTIC_SEARCH=true`, também acha o assunto por significado |
+| 🔧 Tool | `ler_material` | Lê uma anotação ou arquivo de código completo, ou um PDF por páginas (até 5 por vez) |
 | 🔧 Tool | `registrar_duvida` | Salva uma dúvida para revisar depois |
 | 🔧 Tool | `marcar_aula_concluida` | Marca uma aula como concluída |
 | 🔧 Tool | `resolver_duvida` | Marca uma dúvida como resolvida pelo número (`#2`); ela sai do plano de revisão mas continua no histórico |
-| 🔧 Tool | `buscar_por_significado` | **Opcional** (`SEMANTIC_SEARCH=true`). Busca por significado nas anotações e PDFs: acha o assunto mesmo com outras palavras |
-| 🔧 Tool | `listar_duvidas` | Lista as dúvidas não resolvidas e as aulas concluídas (o modelo não consegue abrir resources sozinho, então os mesmos dados também existem como tool) |
+| 🔧 Tool | `ver_estudos` | Lista as dúvidas não resolvidas e as aulas concluídas (o modelo não consegue abrir resources sozinho, então os mesmos dados também existem como tool) |
 | 📄 Resource | `pos://duvidas` | Dúvidas registradas (JSON) |
 | 📄 Resource | `pos://progresso` | Aulas concluídas por módulo (JSON) |
 | 💬 Prompt | `gerar_quiz` | Quiz de múltipla escolha sobre um módulo, baseado nas suas anotações, com a fonte de cada resposta |
@@ -160,11 +159,11 @@ Sem filtro, a busca olha todos os tipos, nesta ordem: **anotações, PDFs e por 
 
 ### PDFs e tokens
 
-O texto dos PDFs é extraído na sua máquina e fica em cache enquanto o arquivo não muda. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_anotacao` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas.
+O texto dos PDFs é extraído na sua máquina e fica em cache enquanto o arquivo não muda. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_material` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas.
 
 ### Busca por significado (opcional)
 
-A busca normal é **literal**: procurar "vetor" não acha um trecho que só fala em "embedding". Com `SEMANTIC_SEARCH=true`, o servidor ganha a tool `buscar_por_significado`, que acha trechos pelo **assunto**, mesmo com palavras diferentes ou em outro idioma.
+A busca normal é **literal**: procurar "vetor" não acha um trecho que só fala em "embedding". Com `SEMANTIC_SEARCH=true`, a tool `buscar_material` passa a achar também pelo **assunto**, mesmo com palavras diferentes ou em outro idioma. Não existe uma segunda tool: o servidor roda as duas buscas e junta os resultados, então o modelo não precisa decidir qual usar.
 
 Ela usa **embeddings**, o mesmo "R" do RAG: cada trecho das suas anotações e PDFs vira um vetor de números, e a busca devolve os trechos com o vetor mais parecido com o da pergunta. Quem gera os vetores é um **modelo de embeddings** pequeno ([multilingual-e5-small](https://huggingface.co/intfloat/multilingual-e5-small), licença MIT), que roda **dentro do servidor, no seu computador**. Ele não escreve texto nem responde nada, e não precisa de Ollama nem de chave de API.
 
@@ -198,6 +197,12 @@ O que acontece:
 
 Código **não** entra no índice: nomes como `registerTool` já são termos exatos, e a busca literal resolve melhor.
 
+**Por que juntar as duas buscas.** Cada uma erra onde a outra acerta. A literal acha `registerTool` e `OPENAI_API_KEY`, mas não entende sinônimos; a semântica acha o assunto com outras palavras, mas muitas vezes deixa de fora o arquivo que tem o nome exato. A junção usa *Reciprocal Rank Fusion*: cada busca dá a cada resultado a nota `1 / (60 + posição)`, e as notas se somam. Arquivos que as duas buscas acharam sobem na lista. Se a busca por significado falhar (biblioteca ausente, sem internet para baixar o modelo), a resposta traz só a literal, com um aviso.
+
+**Quanto isso melhora?** Medido em dois lugares:
+- No material do autor (~1.900 arquivos), para 10 nomes exatos: de 22 arquivos que a busca literal encontra, a semântica sozinha traz 8 e a híbrida traz 15. Esse material é privado e não está no repositório.
+- No corpus de teste do repositório (12 arquivos, 20 perguntas, rodando `npm run test:semantic`): a literal acerta o arquivo em 1º lugar em 6 de 20 perguntas, e a semântica e a híbrida em 18 de 20. Com tão poucos arquivos, a híbrida só empata com a semântica; o corpus serve para detectar regressões, não para provar ganho.
+
 Custos e limites: a biblioteca ([transformers.js](https://huggingface.co/docs/transformers.js)) ocupa ~470 MB, por isso **não** vem junto com o pacote: só baixa quem acrescentar o segundo `--package`. Sem ela, o resto do servidor funciona normalmente e `buscar_por_significado` explica o que falta. Cada busca devolve até 8 trechos de 500 caracteres.
 
 ---
@@ -218,6 +223,18 @@ O servidor limita o que manda ao modelo — até 20 trechos de 200 caracteres po
 
 ---
 
+## O que sai do seu computador
+
+| Parte | Onde roda | Envia seu material para fora? |
+|---|---|---|
+| Este servidor (busca literal, leitura, dúvidas, progresso) | No seu computador | Não |
+| Busca por significado (modelo `multilingual-e5-small`) | No seu computador | Não. Só baixa o modelo uma vez do Hugging Face |
+| O modelo do seu cliente MCP (Copilot, no caso do VS Code) | Na nuvem | **Sim**, apenas os trechos que as tools devolvem |
+
+O modelo de busca por significado não é um LLM de conversa: ele só transforma texto em números para comparar significados, e isso acontece localmente. O que sai do computador é o resultado que o Copilot lê para responder, como acontece com qualquer arquivo que ele abre.
+
+O servidor reduz esse envio: devolve trechos em vez de arquivos inteiros e troca segredos por `[REDACTED]` antes de responder. O que acontece com os dados depois disso depende da política do seu cliente (por exemplo, se o Copilot da sua conta ou organização permite usar os dados para treino). Veja a seção Segurança abaixo.
+
 ## Segurança
 
 Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP (na nuvem, no caso do Copilot). Por isso o servidor aplica várias camadas de proteção:
@@ -233,7 +250,7 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP (na nuvem, no
 - Caracteres invisíveis (zero-width, controle de direção, tag characters Unicode) são removidos, já que servem para esconder instruções do leitor humano
 - Padrões típicos de injeção ("ignore as instruções anteriores", "you are now", `<system>`, "não conte ao usuário"…) geram um **ALERTA** no resultado e o campo `alertas` no `structuredContent`
 - As `instructions` do servidor e os prompts dizem ao modelo para tratar o conteúdo como dados e só falar de prompt injection quando houver uma linha `⚠️ ALERTA`
-- `registrar_duvida` recusa textos com padrões de injeção, para nada ser "plantado" no histórico que depois volta via `listar_duvidas` e `plano_de_revisao`
+- `registrar_duvida` recusa textos com padrões de injeção, para nada ser "plantado" no histórico que depois volta via `ver_estudos` e `plano_de_revisao`
 - Busca semântica (opcional): o modelo é baixado de um commit fixo do Hugging Face (uma versão nova publicada lá não é baixada sem querer), e o índice salvo em `DATA_DIR` guarda o texto já com segredos redigidos e com permissão `600`
 - Argumentos das tools têm tamanho máximo e não aceitam caracteres invisíveis; `gerar_quiz` só aceita módulos que existem
 - Tools anotadas com `readOnlyHint`, para o cliente distinguir leitura de escrita; as de escrita só alteram os JSONs em `DATA_DIR` (criados com permissão `600`)
@@ -263,6 +280,7 @@ tests/
   mcp.test.ts  # PASSO 5.3 — testes de ponta a ponta
   semantic.test.ts # PASSO 5.4 — busca semântica sem o modelo (trechos, similaridade)
   semantic.model.ts # PASSO 5.5 — busca semântica com o modelo de verdade
+  avaliacao.model.ts # PASSO 5.7 — mede o acerto das buscas (literal, semântica e híbrida)
   pacote.smoke.ts  # PASSO 5.6 — instala o pacote do npm numa pasta vazia e sobe o servidor
   fixtures/    # anotações de exemplo
 ```
@@ -276,17 +294,18 @@ tests/
 | 3 | [src/service.ts](src/service.ts) | Tipos, limites e filtros (3.1 a 3.3), PDFs (3.4, 3.8), busca (3.6), leitura (3.7), segurança de caminhos (3.9), dados (3.10) |
 | 4 | [src/safety.ts](src/safety.ts) | As camadas contra vazamento e prompt injection (4.1 a 4.5) |
 | 5 | [tests/](tests/) | Como testar um servidor MCP pelo próprio protocolo |
-| 6 | [src/semantic.ts](src/semantic.ts) | (Opcional) Embeddings na prática: dividir em trechos, indexar e buscar por similaridade (6.1 a 6.5) |
+| 6 | [src/semantic.ts](src/semantic.ts) | (Opcional) Embeddings na prática: dividir em trechos, indexar, buscar por similaridade (6.1 a 6.5) e juntar com a busca literal (6.6) |
 
 ### O caminho de uma busca, passo a passo
 
 Quando você pergunta *"o que eu anotei sobre RAG nos PDFs?"*:
 
 ```
-Copilot ── tools/call buscar_anotacao {termo:"RAG", tipos:["pdf"]} ──►  PASSO 1.1  chega pelo stdin
+Copilot ── tools/call buscar_material {consulta:"RAG", tipos:["pdf"]} ──►  PASSO 1.1  chega pelo stdin
                                                                         PASSO 2.2  Zod valida os argumentos
                                                                         PASSO 2.4  handler da tool
-                                                                        PASSO 3.6  searchNotes
+                                                                        PASSO 6.6  buscaHibrida (literal + por significado)
+                                                                        PASSO 3.6    └ searchNotes (a busca literal)
                                                                         PASSO 3.9    └ módulo dentro da pasta?
                                                                         PASSO 3.5    └ lista os arquivos permitidos (3.3)
                                                                         PASSO 3.4    └ extrai o texto dos PDFs (com cache)
@@ -295,7 +314,7 @@ Copilot ── tools/call buscar_anotacao {termo:"RAG", tipos:["pdf"]} ──►
 Copilot ◄──────────────────── resultado (texto + structuredContent) ──  PASSO 1.1  sai pelo stdout
 ```
 
-Depois disso o modelo decide se lê as páginas (`ler_anotacao` → PASSO 2.5 → 3.7 → 3.9 → 3.8 → 4.4 → 4.5) e escreve a resposta.
+Depois disso o modelo decide se lê as páginas (`ler_material` → PASSO 2.5 → 3.7 → 3.9 → 3.8 → 4.4 → 4.5) e escreve a resposta.
 
 ---
 
@@ -337,7 +356,7 @@ Para atualizar: `git pull && npm install` e reinicie o servidor.
 | `npm test` | Roda os testes de integração |
 | `npm run typecheck` | Verifica os tipos com `tsc` (o Node só remove os tipos, não os checa) |
 | `npm run test:dev` | Testes em modo watch |
-| `npm run test:semantic` | Testes da busca semântica com o modelo de verdade (baixa ~145 MB na primeira vez) |
+| `npm run test:semantic` | Testes da busca semântica e a avaliação das buscas, com o modelo de verdade (baixa ~145 MB na primeira vez) |
 | `npm run test:pack` | Gera o pacote do npm, instala numa pasta vazia e sobe o servidor por ele |
 | `npm run mcp:inspect` | Abre o MCP Inspector usando as anotações de exemplo de `tests/fixtures` |
 
