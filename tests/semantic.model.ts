@@ -42,7 +42,7 @@ describe('busca semântica: com modelo', () => {
     // Espera o índice ficar pronto (sem o aviso "em construção").
     async function buscar(pergunta: string, extra: Record<string, unknown> = {}) {
         for (let tentativa = 0; tentativa < 240; tentativa++) {
-            const result = await client.callTool({ name: 'buscar_por_significado', arguments: { pergunta, ...extra } }) as any
+            const result = await client.callTool({ name: 'buscar_material', arguments: { consulta: pergunta, ...extra } }) as any
             if (result.isError) throw new Error(result.content[0].text)
             if (!/em construção/.test(result.content[0].text)) return result
             await new Promise(resolve => setTimeout(resolve, 500))

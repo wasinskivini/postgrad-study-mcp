@@ -17,8 +17,8 @@
  *   3.3  filtros (arquivos e pastas bloqueados)
  *   3.4  PDFs: extração de texto com cache e intervalo de páginas
  *   3.5  varredura das pastas e lista de módulos
- *   3.6  busca (searchNotes) — usada pela tool buscar_anotacao
- *   3.7  leitura (readNote) — usada pela tool ler_anotacao
+ *   3.6  busca (searchNotes) — usada pela tool buscar_material
+ *   3.7  leitura (readNote) — usada pela tool ler_material
  *   3.8  leitura de PDF por páginas
  *   3.9  segurança de caminhos (não sair da pasta de anotações)
  *   3.10 dados salvos: dúvidas e progresso (JSON em DATA_DIR)
@@ -123,6 +123,8 @@ function isAllowedFile(name: string, tipos = enabledTypes()): boolean {
 // conversa nova, então na prática ele vale durante uma conversa).
 const pdfCache = new Map<string, { mtimeMs: number; pages: string[] }>();
 
+// Texto de cada página do PDF. Usa o cache enquanto o arquivo não mudar e recusa
+// PDFs grandes demais (limite MAX_PDF_BYTES).
 async function readPdfPages(file: string): Promise<string[]> {
     const info = await stat(file);
     if (info.size > MAX_PDF_BYTES) throw new Error(`PDF grande demais (${info.size} bytes, limite ${MAX_PDF_BYTES})`);
@@ -206,7 +208,7 @@ export async function listModules(): Promise<string[]> {
 }
 
 // ----------------------------------------------------------------------------
-// 3.6 — BUSCA (usada pela tool buscar_anotacao, PASSO 2.4)
+// 3.6 — BUSCA (usada pela tool buscar_material, PASSO 2.4)
 // ----------------------------------------------------------------------------
 // Busca LITERAL: procura o termo exato, sem diferenciar maiúsculas/minúsculas.
 // Não entende sinônimos ("vetores" não acha "embeddings") — para isso existe a
@@ -246,7 +248,7 @@ export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[])
 }
 
 // ----------------------------------------------------------------------------
-// 3.7 — LEITURA (usada pela tool ler_anotacao, PASSO 2.5)
+// 3.7 — LEITURA (usada pela tool ler_material, PASSO 2.5)
 // ----------------------------------------------------------------------------
 // Ordem das checagens: caminho dentro da pasta (3.9) → nenhum trecho oculto ou
 // bloqueado → extensão permitida → é arquivo → tamanho → lê e protege (4.4).
@@ -333,12 +335,13 @@ async function writeJson(name: string, data: unknown): Promise<void> {
 // edite o JSON à mão, o que volta ao modelo sai limpo.
 const clean = (text: string) => sanitizeText(text).text.trim();
 
+// Todas as dúvidas registradas, resolvidas ou não, já limpas de caracteres invisíveis.
 export async function getDuvidas(): Promise<Duvida[]> {
     const duvidas = await readJson<Duvida[]>('duvidas.json', []);
     return duvidas.map(d => ({ ...d, modulo: clean(d.modulo), texto: clean(d.texto) }));
 }
 
-// Dúvidas com o número de cada uma (1, 2, 3...), como o usuário as vê em listar_duvidas.
+// Dúvidas com o número de cada uma (1, 2, 3...), como o usuário as vê em ver_estudos.
 export async function getDuvidasNumeradas(): Promise<DuvidaNumerada[]> {
     return (await getDuvidas()).map((duvida, index) => ({ ...duvida, numero: index + 1 }));
 }
@@ -353,6 +356,8 @@ export async function resolverDuvida(numero: number): Promise<DuvidaNumerada> {
     return { ...duvida, numero };
 }
 
+// Acrescenta uma dúvida ao final da lista, como não resolvida. O número dela é a
+// posição na lista (ver getDuvidasNumeradas).
 export async function addDuvida(modulo: string, texto: string): Promise<Duvida> {
     const duvidas = await getDuvidas();
     const duvida = { modulo: clean(modulo), texto: clean(texto), criadaEm: new Date().toISOString(), resolvida: false };
@@ -361,11 +366,13 @@ export async function addDuvida(modulo: string, texto: string): Promise<Duvida> 
     return duvida;
 }
 
+// Aulas concluídas por módulo, ex.: { modulo01: ['aula 1', 'aula 2'] }.
 export async function getProgresso(): Promise<Progresso> {
     const progresso = await readJson<Progresso>('progresso.json', {});
     return Object.fromEntries(Object.entries(progresso).map(([modulo, aulas]) => [clean(modulo), aulas.map(clean)]));
 }
 
+// Marca a aula como concluída no módulo e devolve o progresso completo.
 export async function markAulaConcluida(modulo: string, aula: string): Promise<Progresso> {
     const progresso = await getProgresso();
     const key = clean(modulo);

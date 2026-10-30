@@ -1,0 +1,102 @@
+[
+  {
+    "pergunta": "registerTool",
+    "esperado": "modulo03/mcp-tools.md",
+    "tipo": "nome exato"
+  },
+  {
+    "pergunta": "OPENAI_API_KEY",
+    "esperado": "modulo03/seguranca.md",
+    "tipo": "nome exato"
+  },
+  {
+    "pergunta": "node --test",
+    "esperado": "modulo04/testes.md",
+    "tipo": "nome exato"
+  },
+  {
+    "pergunta": "stdout",
+    "esperado": "modulo03/transporte.md",
+    "tipo": "nome exato"
+  },
+  {
+    "pergunta": "HNSW",
+    "esperado": "modulo02/banco-vetorial.md",
+    "tipo": "nome exato"
+  },
+  {
+    "pergunta": "cross-encoder",
+    "esperado": "modulo02/reranking.md",
+    "tipo": "nome exato"
+  },
+  {
+    "pergunta": "como representar o sentido de um texto como números?",
+    "esperado": "modulo02/embeddings.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "por que o modelo esquece o começo da conversa?",
+    "esperado": "modulo01/tokens-e-contexto.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "o modelo inventou um fato, como evitar?",
+    "esperado": "modulo01/alucinacao.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "como cortar documentos grandes antes de indexar?",
+    "esperado": "modulo02/chunking.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "onde guardar vetores e buscar os mais próximos?",
+    "esperado": "modulo02/banco-vetorial.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "como melhorar a ordem dos resultados recuperados?",
+    "esperado": "modulo02/reranking.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "qual a diferença entre ferramentas, dados e mensagens prontas no protocolo?",
+    "esperado": "modulo03/mcp-tools.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "como o cliente conversa com o servidor local?",
+    "esperado": "modulo03/transporte.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "texto malicioso dentro de um arquivo dando ordens ao assistente",
+    "esperado": "modulo03/seguranca.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "diferença entre testar uma função isolada e o sistema inteiro",
+    "esperado": "modulo04/testes.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "posso fazer commit direto no branch principal?",
+    "esperado": "modulo04/git-fluxo.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "como empacotar o app com todas as dependências?",
+    "esperado": "modulo04/docker.md",
+    "tipo": "outras palavras"
+  },
+  {
+    "pergunta": "what is a context window?",
+    "esperado": "modulo01/tokens-e-contexto.md",
+    "tipo": "outro idioma"
+  },
+  {
+    "pergunta": "vector similarity",
+    "esperado": "modulo02/embeddings.md",
+    "tipo": "outro idioma"
+  }
+]

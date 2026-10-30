@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit -p .",
     "mcp:inspect": "npx @modelcontextprotocol/inspector -e NOTES_DIR=./tests/fixtures/notas node src/index.ts",
     "test:dev": "node --inspect --test --watch tests/**/*.test.ts",
-    "test:semantic": "node --test tests/semantic.model.ts",
+    "test:semantic": "node --test tests/*.model.ts",
     "build": "tsc -p tsconfig.build.json",
     "prepack": "npm run build",
     "test:pack": "node --test tests/pacote.smoke.ts"

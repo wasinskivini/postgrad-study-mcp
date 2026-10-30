@@ -35,6 +35,8 @@ import { config } from "./service.ts";
 // A busca semântica opcional (PASSO 6).
 import { atualizarIndice } from "./semantic.ts";
 
+// Liga o servidor ao transporte stdio e, se pedido, começa a montar o índice
+// semântico em segundo plano.
 async function main() {
     const transport = new StdioServerTransport()
     // 1.2 — Conecta o servidor ao transporte. A partir daqui o servidor espera o

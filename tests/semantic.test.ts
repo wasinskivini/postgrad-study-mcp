@@ -6,7 +6,7 @@
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
-import { dividirEmTrechos, similaridade } from '../src/semantic.ts'
+import { dividirEmTrechos, fundir, similaridade } from '../src/semantic.ts'
 
 describe('busca semântica: sem modelo', () => {
     it('should split long files into chunks that keep the starting line', () => {
@@ -29,5 +29,32 @@ describe('busca semântica: sem modelo', () => {
     it('should compute similarity as the dot product of normalized vectors', () => {
         assert.strictEqual(similaridade([1, 0], [1, 0]), 1)
         assert.strictEqual(similaridade([1, 0], [0, 1]), 0)
+    })
+})
+
+describe('busca híbrida: fundir', () => {
+    const achado = (arquivo: string, linha = 1, pagina?: number) => ({ arquivo, linha, pagina, trecho: 'x', alertas: [] })
+    const parecido = (arquivo: string, linha: number, similaridade: number) => ({ ...achado(arquivo, linha), similaridade })
+
+    it('should rank higher the file that both searches found', () => {
+        const resultado = fundir([achado('a.md'), achado('b.md')], [parecido('b.md', 9, 0.9)])
+        assert.strictEqual(resultado[0].arquivo, 'b.md')
+    })
+
+    it('should merge the same line found by both searches', () => {
+        const resultado = fundir([achado('a.md', 4)], [parecido('a.md', 4, 0.88)])
+        assert.strictEqual(resultado.length, 1)
+        assert.strictEqual(resultado[0].origem, 'ambas')
+        assert.strictEqual(resultado[0].similaridade, 0.88)
+    })
+
+    it('should keep results of only one search when the other finds nothing', () => {
+        assert.deepStrictEqual(fundir([achado('a.md')], []).map(r => r.origem), ['literal'])
+        assert.deepStrictEqual(fundir([], [parecido('a.md', 1, 0.8)]).map(r => r.origem), ['significado'])
+    })
+
+    it('should keep at most 3 results per file', () => {
+        const literais = [1, 2, 3, 4, 5].map(linha => achado('a.md', linha))
+        assert.strictEqual(fundir(literais, [parecido('a.md', 9, 0.9)]).length, 3)
     })
 })
