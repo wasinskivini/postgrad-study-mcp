@@ -32,12 +32,12 @@ describe('pacote do npm', () => {
     let client: Client
 
     before(async () => {
-        root = await mkdtemp(join(tmpdir(), 'postgrad-pacote-'))
+        root = await mkdtemp(join(tmpdir(), 'study-notes-pacote-'))
         const { filename } = infoDoPack(npm(['pack', '--json', '--pack-destination', root], process.cwd()))
         await writeFile(join(root, 'package.json'), '{"private": true}')
         // Sem a busca semântica: @huggingface/transformers é peer opcional e não vem junto.
         npm(['install', '--no-audit', '--no-fund', join(root, filename)], root)
-        pacote = join(root, 'node_modules', 'postgrad-study-mcp')
+        pacote = join(root, 'node_modules', 'study-notes-mcp')
     })
 
     after(async () => {
@@ -54,7 +54,7 @@ describe('pacote do npm', () => {
 
     it('should start through the bin and list the tools', { timeout: 30_000 }, async () => {
         const { bin } = JSON.parse(await readFile(join(pacote, 'package.json'), 'utf8'))
-        const entrada = resolve(pacote, bin['postgrad-study-mcp'])
+        const entrada = resolve(pacote, bin['study-notes-mcp'])
         assert.match(await readFile(entrada, 'utf8'), /^#!\/usr\/bin\/env node/)
 
         client = new Client({ name: 'test-pacote', version: '1.0.0' })

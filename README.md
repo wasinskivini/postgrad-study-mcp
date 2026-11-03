@@ -1,8 +1,8 @@
-# postgrad-study-mcp
+# study-notes-mcp
 
-[![test](https://github.com/wasinskivini/postgrad-study-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/wasinskivini/postgrad-study-mcp/actions/workflows/test.yml)
+[![test](https://github.com/wasinskivini/study-notes-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/wasinskivini/study-notes-mcp/actions/workflows/test.yml)
 
-Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para apoiar os estudos da pós: busca nas suas anotações, no código e nos PDFs das aulas, registra dúvidas, acompanha o progresso e gera quizzes e planos de revisão — disponível em **qualquer projeto** aberto no VS Code (ou em outro cliente MCP).
+Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para apoiar os estudos (pós-graduação, faculdade, cursos): busca nas suas anotações, no código e nos PDFs das aulas, registra dúvidas, acompanha o progresso e gera quizzes e planos de revisão — disponível em **qualquer projeto** aberto no VS Code (ou em outro cliente MCP).
 
 > **O servidor não traz conteúdo nenhum.** Ele roda no seu computador e busca na **sua** pasta de estudos. Cada pessoa aponta para a própria pasta; ninguém acessa os arquivos de ninguém.
 
@@ -19,7 +19,7 @@ Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) para ap
 
 ### 2. Não precisa baixar nada
 
-O servidor está no [npm](https://www.npmjs.com/package/postgrad-study-mcp): o VS Code baixa e roda sozinho com `npx` quando você configurar o passo 4. Para mexer no código, veja [A partir do código-fonte](#a-partir-do-código-fonte).
+O servidor está no [npm](https://www.npmjs.com/package/study-notes-mcp): o VS Code baixa e roda sozinho com `npx` quando você configurar o passo 4. Para mexer no código, veja [A partir do código-fonte](#a-partir-do-código-fonte).
 
 ### 3. Monte sua pasta de estudos
 
@@ -43,10 +43,10 @@ Abra `Cmd+Shift+P` (Mac) / `Ctrl+Shift+P` (Windows/Linux) → **MCP: Open User C
 ```json
 {
   "servers": {
-    "postgrad-study-mcp": {
+    "study-notes-mcp": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "postgrad-study-mcp@latest"],
+      "args": ["-y", "study-notes-mcp@latest"],
       "env": {
         "NOTES_DIR": "/Users/seu-usuario/Documents/Pós IA",
         "INCLUDE_PDF": "true"
@@ -89,7 +89,7 @@ Dicas:
 
 ### 5. Inicie e teste
 
-1. `Cmd/Ctrl+Shift+P` → **MCP: List Servers** → `postgrad-study-mcp` → **Start Server**
+1. `Cmd/Ctrl+Shift+P` → **MCP: List Servers** → `study-notes-mcp` → **Start Server**
 2. Em **Show Output**, confira se aparece `Discovered 7 tools`
 3. Abra o Copilot Chat no modo **Agent** e pergunte algo sobre o seu material
 
@@ -104,7 +104,7 @@ Na primeira chamada de cada tool o VS Code pede permissão — clique em **Allow
 | Servidor aparece mas não acha nada | Confira o `NOTES_DIR` (caminho absoluto, pasta existe). Sem a [busca por significado](#busca-por-significado-opcional) ligada, a busca é por **texto literal**: tente outra palavra |
 | "Language model unavailable" no chat | Problema do Copilot, não do servidor: atualize o VS Code e confira o login/plano do Copilot |
 | O modelo responde sem usar o servidor | Seja explícito: "consulte minhas anotações sobre…" ou cite a tool com `#buscar_material` |
-| Digitando `/` não aparecem `gerar_quiz` nem `plano_de_revisao` | A conversa está numa sessão **Copilot CLI**, que não mostra prompts de MCP. Abra um chat na sessão **Local**, modo **Agent**, e digite `/mcp.postgrad` |
+| Digitando `/` não aparecem `gerar_quiz` nem `plano_de_revisao` | A conversa está numa sessão **Copilot CLI**, que não mostra prompts de MCP. Abra um chat na sessão **Local**, modo **Agent**, e digite `/mcp.study-notes` |
 | O chat leu um arquivo que o servidor bloqueia (`.zshrc`, `package.json`...) | Quem leu foi o **próprio Copilot**, com a ferramenta embutida dele (aparece "Read arquivo", não "Ran ler_material"). As proteções deste servidor valem só para o que passa por ele. Para testar o servidor, cite a tool: `#ler_material` |
 | Parei o servidor e ele voltou sozinho | O VS Code reinicia servidores a cada conversa nova. Para desligar de verdade, remova a entrada do `mcp.json` |
 
@@ -125,7 +125,7 @@ Com o servidor rodando, no Copilot Chat (modo **Agent**):
 | `Já entendi a dúvida 2, pode marcar como resolvida` | `resolver_duvida` |
 | `Onde as aulas explicam como transformar texto em números?` | `buscar_material` (com a busca por significado ligada, acha mesmo sem as mesmas palavras) |
 
-Os prompts aparecem digitando `/` no chat: `/mcp.postgrad-study-mcp.gerar_quiz` e `/mcp.postgrad-study-mcp.plano_de_revisao`.
+Os prompts aparecem digitando `/` no chat: `/mcp.study-notes-mcp.gerar_quiz` e `/mcp.study-notes-mcp.plano_de_revisao`.
 
 ### Como o quiz e o plano de revisão funcionam
 
@@ -160,7 +160,7 @@ No `plano_de_revisao`, o próprio servidor lê as suas dúvidas e o seu progress
 | Variável | Padrão | Uso |
 |---|---|---|
 | `NOTES_DIR` | `~/Documents` | Pasta raiz das anotações (cada subpasta é um módulo) |
-| `DATA_DIR` | `~/.postgrad-study-mcp` | Onde ficam `duvidas.json` e `progresso.json` |
+| `DATA_DIR` | `~/.study-notes-mcp` | Onde ficam `duvidas.json` e `progresso.json` |
 | `INCLUDE_PDF` | `true` | `false` desliga totalmente a busca e a leitura de PDFs |
 | `SEMANTIC_SEARCH` | `false` | `true` liga a [busca por significado](#busca-por-significado-opcional) |
 | `MODELS_DIR` | `DATA_DIR/modelos` | Onde o modelo de embeddings fica guardado depois do download |
@@ -197,14 +197,14 @@ Ela usa **embeddings**, o mesmo "R" do RAG: cada trecho das suas anotações e P
 Para ligar, a biblioteca de embeddings entra como um segundo pacote no `npx` e a variável `SEMANTIC_SEARCH` no `env`:
 
 ```json
-"postgrad-study-mcp": {
+"study-notes-mcp": {
   "type": "stdio",
   "command": "npx",
   "args": [
     "-y",
-    "--package=postgrad-study-mcp@latest",
+    "--package=study-notes-mcp@latest",
     "--package=@huggingface/transformers@4.3.1",
-    "postgrad-study-mcp"
+    "study-notes-mcp"
   ],
   "env": {
     "NOTES_DIR": "/Users/seu-usuario/Documents/Pós IA",
@@ -242,7 +242,7 @@ Quem "pensa" é o modelo do **seu** cliente MCP, cobrado pelo plano dele:
 
 | Onde roda | Custo |
 |---|---|
-| `postgrad-study-mcp` (busca, PDFs, dúvidas, busca semântica) | Grátis — local |
+| `study-notes-mcp` (busca, PDFs, dúvidas, busca semântica) | Grátis — local |
 | Modelo do Copilot Chat | Conforme o seu plano do Copilot. No **Free** há um limite mensal de uso e nada é cobrado; estudantes podem pedir o **Pro** grátis pelo [GitHub Education](https://education.github.com) |
 | Outros clientes (Claude, Cursor…) | Conforme o plano/assinatura de cada um |
 
@@ -347,7 +347,7 @@ Depois disso o modelo decide se lê as páginas (`ler_material` → PASSO 2.5 �
 
 ## Atualizando
 
-Com `postgrad-study-mcp@latest` no `mcp.json`, basta reiniciar o servidor em **MCP: List Servers**: o `npx` baixa a versão nova sozinho.
+Com `study-notes-mcp@latest` no `mcp.json`, basta reiniciar o servidor em **MCP: List Servers**: o `npx` baixa a versão nova sozinho.
 
 ---
 
@@ -356,8 +356,8 @@ Com `postgrad-study-mcp@latest` no `mcp.json`, basta reiniciar o servidor em **M
 Para estudar o código, contribuir ou testar mudanças antes de publicar:
 
 ```bash
-git clone https://github.com/wasinskivini/postgrad-study-mcp.git
-cd postgrad-study-mcp
+git clone https://github.com/wasinskivini/study-notes-mcp.git
+cd study-notes-mcp
 npm install
 npm test
 ```
@@ -366,7 +366,7 @@ No `mcp.json`, troque `command` e `args` pelo Node rodando o TypeScript direto (
 
 ```json
 "command": "node",
-"args": ["/Users/seu-usuario/postgrad-study-mcp/src/index.ts"]
+"args": ["/Users/seu-usuario/study-notes-mcp/src/index.ts"]
 ```
 
 Para atualizar: `git pull && npm install` e reinicie o servidor.
@@ -400,7 +400,7 @@ Contribuições são bem-vindas! O passo a passo completo — fork, branch, conv
 3. Rode `npm run typecheck && npm test`
 4. Abra um pull request — o template traz um checklist
 
-Para bugs e ideias, use as [issues](https://github.com/wasinskivini/postgrad-study-mcp/issues/new/choose). Falhas de segurança **não** vão em issue pública: veja o [SECURITY.md](SECURITY.md).
+Para bugs e ideias, use as [issues](https://github.com/wasinskivini/study-notes-mcp/issues/new/choose). Falhas de segurança **não** vão em issue pública: veja o [SECURITY.md](SECURITY.md).
 
 ---
 

@@ -84,12 +84,12 @@ async function createNotesDir(root: string) {
 
 // Um único servidor é iniciado para todos os testes do bloco (before) e
 // encerrado no final (after), junto com a pasta temporária.
-describe('Postgrad Study MCP', () => {
+describe('Study Notes MCP', () => {
     let client: Client
     let root: string
 
     before(async () => {
-        root = await mkdtemp(join(tmpdir(), 'postgrad-study-'))
+        root = await mkdtemp(join(tmpdir(), 'study-notes-'))
         client = await createTestClient(await createNotesDir(root), join(root, 'data'))
     })
 

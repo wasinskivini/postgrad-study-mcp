@@ -6,8 +6,8 @@
  *
  * Este é o arquivo que o cliente MCP (ex.: VS Code/Copilot) executa:
  *
- *     npx -y postgrad-study-mcp                       (pacote do npm, compilado em dist/)
- *     node /caminho/postgrad-study-mcp/src/index.ts   (direto do código-fonte)
+ *     npx -y study-notes-mcp                       (pacote do npm, compilado em dist/)
+ *     node /caminho/study-notes-mcp/src/index.ts   (direto do código-fonte)
  *
  * A primeira linha (#!) diz ao sistema para rodar o arquivo com o Node quando
  * ele é chamado como comando (o "bin" do package.json).
@@ -45,8 +45,8 @@ async function main() {
     //       tools/list e tools/call.
     await server.connect(transport)
     // 1.3 — Log no stderr (console.error), nunca no stdout. No VS Code ele aparece
-    //       em MCP: List Servers → postgrad-study-mcp → Show Output.
-    console.error(`Postgrad Study MCP Server running on stdio (notas: ${config.notesDir})`)
+    //       em MCP: List Servers → study-notes-mcp → Show Output.
+    console.error(`Study Notes MCP Server running on stdio (notas: ${config.notesDir})`)
     // 1.4 — Com SEMANTIC_SEARCH=true, começa a montar o índice em segundo plano
     //       (sem await): o servidor já atende pedidos enquanto isso.
     if (config.semanticSearch) void atualizarIndice()

@@ -57,12 +57,12 @@ registrar_duvida, marcar_aula_concluida e resolver_duvida só devem ser chamadas
 Para consultar as dúvidas registradas e as aulas concluídas, use ver_estudos.`
 
 // Nome e versão aparecem para o cliente; no VS Code o nome vira prefixo das
-// tools e dos prompts (ex.: /mcp.postgrad-study-mcp.gerar_quiz). A versão vem
+// tools e dos prompts (ex.: /mcp.study-notes-mcp.gerar_quiz). A versão vem
 // do package.json, que fica uma pasta acima tanto de src/ quanto de dist/.
 const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 
 export const server = new McpServer({
-    name: 'postgrad-study-mcp',
+    name: 'study-notes-mcp',
     version
 }, {
     instructions: INSTRUCTIONS

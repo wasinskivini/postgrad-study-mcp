@@ -34,7 +34,7 @@ body:
     id: logs
     attributes:
       label: Logs do servidor
-      description: Em MCP List Servers → postgrad-study-mcp → Show Output. Remova caminhos ou dados pessoais antes de colar.
+      description: Em MCP List Servers → study-notes-mcp → Show Output. Remova caminhos ou dados pessoais antes de colar.
       render: text
   - type: input
     id: node

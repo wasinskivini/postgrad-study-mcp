@@ -1,4 +1,4 @@
-# Contribuindo com o postgrad-study-mcp
+# Contribuindo com o study-notes-mcp
 
 Obrigado pelo interesse! Este é um projeto educacional da pós, e contribuições de colegas são muito bem-vindas — de correções de texto a tools novas.
 
@@ -20,8 +20,8 @@ Para mudanças grandes (uma tool nova, outra forma de busca), abra uma issue pri
 Clique em **Fork** no GitHub (cria uma cópia na sua conta) e depois:
 
 ```bash
-git clone https://github.com/SEU-USUARIO/postgrad-study-mcp.git
-cd postgrad-study-mcp
+git clone https://github.com/SEU-USUARIO/study-notes-mcp.git
+cd study-notes-mcp
 npm install
 npm run typecheck && npm test   # tudo deve passar antes de você mexer
 ```
