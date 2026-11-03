@@ -69,7 +69,7 @@ export const MAX_PDF_PAGES_PER_READ = 5;
 // Configuração lida das variáveis de ambiente, definidas no bloco "env" do
 // mcp.json (ou num .env — veja o .env.example). resolve() transforma em
 // caminho absoluto, que é o que as checagens do 3.9 comparam.
-const dataDir = resolve(process.env.DATA_DIR ?? join(homedir(), '.postgrad-study-mcp'));
+const dataDir = resolve(process.env.DATA_DIR ?? join(homedir(), '.study-notes-mcp'));
 export const config = {
     notesDir: resolve(process.env.NOTES_DIR ?? join(homedir(), 'Documents')),
     dataDir,

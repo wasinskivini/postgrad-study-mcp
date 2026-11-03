@@ -37,13 +37,13 @@ describe('avaliação da busca', () => {
     const buscas: Record<'literal' | 'semantica' | 'hibrida', Busca> = {} as never
 
     before(async () => {
-        root = await mkdtemp(join(tmpdir(), 'postgrad-avaliacao-'))
+        root = await mkdtemp(join(tmpdir(), 'study-notes-avaliacao-'))
         // A configuração é lida das variáveis de ambiente quando o service.ts é
         // carregado; por isso elas são definidas ANTES do import dinâmico.
         process.env.NOTES_DIR = resolve('tests/fixtures/avaliacao/notas')
         process.env.DATA_DIR = join(root, 'data')
         process.env.SEMANTIC_SEARCH = 'true'
-        process.env.MODELS_DIR = process.env.MODELS_DIR ?? join(tmpdir(), 'postgrad-study-mcp-modelos')
+        process.env.MODELS_DIR = process.env.MODELS_DIR ?? join(tmpdir(), 'study-notes-mcp-modelos')
         const { searchNotes } = await import('../src/service.ts')
         const { atualizarIndice, semanticSearch, buscaHibrida } = await import('../src/semantic.ts')
         await atualizarIndice()

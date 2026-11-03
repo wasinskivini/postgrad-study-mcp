@@ -19,7 +19,7 @@ describe('busca semântica: com modelo', () => {
     let root: string
 
     before(async () => {
-        root = await mkdtemp(join(tmpdir(), 'postgrad-semantic-'))
+        root = await mkdtemp(join(tmpdir(), 'study-notes-semantic-'))
         const notesDir = join(root, 'notas')
         await cp('tests/fixtures/notas', notesDir, { recursive: true })
         await writeFile(join(notesDir, 'modulo01', 'receita.md'), 'Bolo de cenoura: misture farinha, ovos, açúcar e asse por 40 minutos.')
@@ -30,7 +30,7 @@ describe('busca semântica: com modelo', () => {
         // MODELS_DIR fora da pasta temporária: o modelo é baixado uma vez e reaproveitado.
         client = await createTestClient(notesDir, join(root, 'data'), {
             SEMANTIC_SEARCH: 'true',
-            MODELS_DIR: process.env.MODELS_DIR ?? join(tmpdir(), 'postgrad-study-mcp-modelos'),
+            MODELS_DIR: process.env.MODELS_DIR ?? join(tmpdir(), 'study-notes-mcp-modelos'),
         })
     })
 
