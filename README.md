@@ -60,6 +60,33 @@ No Windows, use `/` ou `\\` no caminho: `"NOTES_DIR": "C:/Users/seu-usuario/Docu
 
 O `@latest` faz o `npx` conferir se há versão nova a cada início. Na primeira vez ele baixa o pacote e as dependências (alguns MB), por isso o servidor pode demorar alguns segundos para subir.
 
+### Todos os projetos ou só um?
+
+| Onde configurar | Arquivo | Quando usar |
+|---|---|---|
+| Usuário (recomendado) | **MCP: Open User Configuration** | Você estuda enquanto trabalha em vários projetos e quer o material sempre à mão |
+| Só um projeto | `.vscode/mcp.json` dentro do projeto | Você abre uma pasta só para estudar, ou quer o servidor apenas ali |
+
+Para um projeto só, crie `.vscode/mcp.json` com o mesmo conteúdo do passo 4. Se as notas ficam dentro do próprio projeto, use `${workspaceFolder}` no lugar do caminho absoluto:
+
+```json
+{
+  "servers": {
+    "postgrad-study-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "postgrad-study-mcp@latest"],
+      "env": { "NOTES_DIR": "${workspaceFolder}/notas" }
+    }
+  }
+}
+```
+
+Dicas:
+- **Escolha um dos dois.** Configurado nos dois lugares, o servidor aparece duplicado e o modelo vê as tools em dobro.
+- **Não faça commit de caminhos pessoais.** Se o `.vscode/mcp.json` tiver um caminho da sua máquina, coloque-o no `.gitignore` ou use `${workspaceFolder}`.
+- **Configurado para o usuário, mas sem uso em um projeto?** No Copilot Chat, clique no ícone de ferramentas (**Configure Tools**) e desmarque o `postgrad-study-mcp`. O modelo deixa de ver as 7 tools ali, sem afetar os outros projetos.
+
 ### 5. Inicie e teste
 
 1. `Cmd/Ctrl+Shift+P` → **MCP: List Servers** → `postgrad-study-mcp` → **Start Server**
