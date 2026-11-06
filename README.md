@@ -390,6 +390,8 @@ Depois disso o modelo decide se lê as páginas (`ler_material` → PASSO 2.5 �
 
 Com `study-notes-mcp@latest` no `mcp.json`, basta reiniciar o servidor em **MCP: List Servers**: o `npx` baixa a versão nova sozinho.
 
+As dependências do projeto são vigiadas pelo [Dependabot](.github/dependabot.yml): uma vez por mês ele abre um PR com as atualizações, testado pelo CI antes do merge. O `@huggingface/transformers` fica de fora, porque a versão dele está fixada no comando de instalação da busca por significado e muda à mão.
+
 ---
 
 ## A partir do código-fonte

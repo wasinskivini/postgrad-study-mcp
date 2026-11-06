@@ -1,0 +1,27 @@
+# Dependabot: o GitHub abre PRs quando sai versão nova de uma dependência.
+# Uma vez por mês e tudo num PR só, para não virar uma fila de PRs. Correções
+# de segurança não esperam o mês: o Dependabot abre na hora (se os alertas
+# estiverem ligados em Settings → Code security).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      dependencias:
+        patterns: ["*"]
+    ignore:
+      # A versão está fixada no README e no comando de instalação da busca por
+      # significado (--package=@huggingface/transformers@4.3.1). Atualizar só
+      # aqui deixaria os dois fora de sincronia: essa troca é manual.
+      - dependency-name: "@huggingface/transformers"
+
+  # As actions do CI (checkout, setup-node, cache) também envelhecem.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
