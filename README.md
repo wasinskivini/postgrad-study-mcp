@@ -125,7 +125,7 @@ Com o servidor rodando, no Copilot Chat (modo **Agent**):
 | `Já entendi a dúvida 2, pode marcar como resolvida` | `resolver_duvida` |
 | `Onde as aulas explicam como transformar texto em números?` | `buscar_material` (com a busca por significado ligada, acha mesmo sem as mesmas palavras) |
 
-Os prompts aparecem digitando `/` no chat: `/mcp.study-notes-mcp.gerar_quiz` e `/mcp.study-notes-mcp.plano_de_revisao`.
+Os prompts aparecem digitando `/` no chat: `/mcp.study-notes-mcp.gerar_quiz` e `/mcp.study-notes-mcp.plano_de_revisao`. No `gerar_quiz`, o servidor sugere os módulos que existem enquanto você digita o argumento `modulo`, em clientes que suportam autocompletar argumentos (*completions* do MCP). Nos outros, basta digitar o nome como aparece em `listar_modulos`.
 
 ### Como o quiz e o plano de revisão funcionam
 
