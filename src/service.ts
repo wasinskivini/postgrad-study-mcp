@@ -164,6 +164,7 @@ export function lerPadroes(conteudo: string): Padrao[] {
 // O arquivo é relido só quando muda (mtimeMs): editar o .studynotesignore vale
 // na próxima busca, sem reiniciar o servidor.
 let ignorados: { mtimeMs: number; padroes: Padrao[] } | undefined;
+// Sem .studynotesignore, nenhum padrão: nada é excluído além das regras do 3.3.
 async function carregarPadroes(): Promise<Padrao[]> {
     const arquivo = join(config.notesDir, IGNORE_FILE);
     const info = await stat(arquivo).catch(() => undefined);
@@ -254,6 +255,8 @@ export async function listNoteFiles(dir: string, tipos: Tipo[]): Promise<string[
     return percorrer(dir, tipos, await carregarExclusao());
 }
 
+// A varredura em si: a regra de exclusão é carregada uma vez em listNoteFiles e
+// passada adiante, em vez de ser relida em cada subpasta.
 async function percorrer(dir: string, tipos: Tipo[], excluido: Exclusao): Promise<string[]> {
     const entries = await readdir(dir, { withFileTypes: true });
     const files: string[] = [];
