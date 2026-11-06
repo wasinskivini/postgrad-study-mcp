@@ -221,6 +221,13 @@ Com a [busca por significado](#busca-por-significado-opcional) ligada, ignorar c
 
 O texto dos PDFs é extraído na sua máquina e fica em cache enquanto o arquivo não muda. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_material` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas.
 
+### Notas do Obsidian
+
+O [Obsidian](https://obsidian.md) é um app de anotações que guarda cada nota como um `.md` comum, então basta apontar `NOTES_DIR` para a pasta do seu cofre (*vault*). A pasta `.obsidian`, com as configurações do app, é ignorada como toda pasta oculta. Duas convenções do Obsidian são entendidas:
+
+- **`[[links]]`:** ao ler uma nota, `ler_material` lista para qual arquivo cada link aponta, e o modelo pode segui-lo. Vale também para `[[nota#seção]]`, `[[nota|apelido]]` e `![[nota]]`. Com o mesmo nome em duas pastas, fica o arquivo mais perto da raiz, como no app. Links para arquivos que o servidor não lê aparecem como "não encontrado".
+- **Frontmatter** (o bloco `---` no topo, com `tags:` e datas): fica fora da busca por significado, onde só atrapalharia. A busca literal continua achando, então procurar `tags: [rag` funciona.
+
 ### Busca por significado (opcional)
 
 A busca normal é **literal**: procurar "vetor" não acha um trecho que só fala em "embedding". Com `SEMANTIC_SEARCH=true`, a tool `buscar_material` passa a achar também pelo **assunto**, mesmo com palavras diferentes ou em outro idioma. Não existe uma segunda tool: o servidor roda as duas buscas e junta os resultados, então o modelo não precisa decidir qual usar.
@@ -352,7 +359,7 @@ tests/
 |---|---|---|
 | 1 | [src/index.ts](src/index.ts) | Como um servidor MCP sobe e por que o stdout é sagrado (1.1 a 1.5) |
 | 2 | [src/mcp.ts](src/mcp.ts) | Como declarar tools (2.3 a 2.8), resources (2.9) e prompts (2.10); instructions (2.1) e validação (2.2) |
-| 3 | [src/service.ts](src/service.ts) | Tipos, limites, filtros e `.studynotesignore` (3.1 a 3.3), PDFs (3.4, 3.8), busca (3.6), leitura (3.7), segurança de caminhos (3.9), dados (3.10) |
+| 3 | [src/service.ts](src/service.ts) | Tipos, limites, filtros e `.studynotesignore` (3.1 a 3.3), PDFs (3.4, 3.8), busca (3.6), leitura (3.7), segurança de caminhos (3.9), dados (3.10), formato do Obsidian (3.11) |
 | 4 | [src/safety.ts](src/safety.ts) | As camadas contra vazamento e prompt injection (4.1 a 4.5) |
 | 5 | [tests/](tests/) | Como testar um servidor MCP pelo próprio protocolo |
 | 6 | [src/semantic.ts](src/semantic.ts) | (Opcional) Embeddings na prática: dividir em trechos, indexar, buscar por similaridade (6.1 a 6.5) e juntar com a busca literal (6.6) |
