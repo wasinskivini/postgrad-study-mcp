@@ -7,6 +7,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { dividirEmTrechos, fundir, similaridade } from '../src/semantic.ts'
+import { semFrontmatter } from '../src/service.ts'
 
 describe('busca semântica: sem modelo', () => {
     it('should split long files into chunks that keep the starting line', () => {
@@ -56,5 +57,17 @@ describe('busca híbrida: fundir', () => {
     it('should keep at most 3 results per file', () => {
         const literais = [1, 2, 3, 4, 5].map(linha => achado('a.md', linha))
         assert.strictEqual(fundir(literais, [parecido('a.md', 9, 0.9)]).length, 3)
+    })
+})
+
+describe('formato do Obsidian: semFrontmatter', () => {
+    it('should blank the frontmatter and keep the line numbers', () => {
+        const lines = ['---', 'tags: [rag]', '---', '# Aula', 'texto']
+        assert.deepStrictEqual(semFrontmatter(lines), ['', '', '', '# Aula', 'texto'])
+    })
+
+    it('should keep notes without frontmatter, or with an unclosed one, as they are', () => {
+        assert.deepStrictEqual(semFrontmatter(['# Aula', '---', 'x']), ['# Aula', '---', 'x'])
+        assert.deepStrictEqual(semFrontmatter(['---', 'sem fim']), ['---', 'sem fim'])
     })
 })

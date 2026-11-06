@@ -35,7 +35,7 @@ import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import {
     config, enabledTypes, listNoteFiles, readSearchableLines, resolveInsideNotes,
-    searchNotes, typeOf, type Resultado, type Tipo,
+    searchNotes, semFrontmatter, typeOf, type Resultado, type Tipo,
 } from './service.ts';
 import { prepareUntrusted } from './safety.ts';
 
@@ -189,7 +189,8 @@ async function construirIndice(): Promise<void> {
         const info = await stat(file).catch(() => undefined);
         const anterior = indice.get(arquivo);
         if (info && !(anterior?.mtimeMs === info.mtimeMs && anterior.size === info.size)) {
-            const sections = await readSearchableLines(file).catch(() => []);
+            const sections = (await readSearchableLines(file).catch(() => []))
+                .map(section => (section.pagina ? section : { ...section, lines: semFrontmatter(section.lines) }));
             const trechos = dividirEmTrechos(sections).map(t => {
                 const { text, alertas } = prepareUntrusted(t.texto);
                 return { ...t, texto: text, alertas };

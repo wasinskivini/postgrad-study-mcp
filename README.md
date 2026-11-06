@@ -188,6 +188,13 @@ Sem filtro, a busca olha todos os tipos, nesta ordem: **anotações, PDFs e por 
 
 O texto dos PDFs é extraído na sua máquina e fica em cache enquanto o arquivo não muda. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_material` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas.
 
+### Notas do Obsidian
+
+O [Obsidian](https://obsidian.md) é um app de anotações que guarda cada nota como um `.md` comum, então basta apontar `NOTES_DIR` para a pasta do seu cofre (*vault*). A pasta `.obsidian`, com as configurações do app, é ignorada como toda pasta oculta. Duas convenções do Obsidian são entendidas:
+
+- **`[[links]]`:** ao ler uma nota, `ler_material` lista para qual arquivo cada link aponta, e o modelo pode segui-lo. Vale também para `[[nota#seção]]`, `[[nota|apelido]]` e `![[nota]]`. Com o mesmo nome em duas pastas, fica o arquivo mais perto da raiz, como no app. Links para arquivos que o servidor não lê aparecem como "não encontrado".
+- **Frontmatter** (o bloco `---` no topo, com `tags:` e datas): fica fora da busca por significado, onde só atrapalharia. A busca literal continua achando, então procurar `tags: [rag` funciona.
+
 ### Busca por significado (opcional)
 
 A busca normal é **literal**: procurar "vetor" não acha um trecho que só fala em "embedding". Com `SEMANTIC_SEARCH=true`, a tool `buscar_material` passa a achar também pelo **assunto**, mesmo com palavras diferentes ou em outro idioma. Não existe uma segunda tool: o servidor roda as duas buscas e junta os resultados, então o modelo não precisa decidir qual usar.

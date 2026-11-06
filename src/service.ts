@@ -22,6 +22,7 @@
  *   3.8  leitura de PDF por páginas
  *   3.9  segurança de caminhos (não sair da pasta de anotações)
  *   3.10 dados salvos: dúvidas e progresso (JSON em DATA_DIR)
+ *   3.11 formato do Obsidian: [[links]] e cabeçalho (frontmatter)
  *
  * A busca semântica (opcional) fica separada, no PASSO 6 (semantic.ts).
  */
@@ -382,4 +383,55 @@ export async function markAulaConcluida(modulo: string, aula: string): Promise<P
     progresso[key] = [...aulas];
     await writeJson('progresso.json', progresso);
     return progresso;
+}
+
+// ----------------------------------------------------------------------------
+// 3.11 — FORMATO DO OBSIDIAN
+// ----------------------------------------------------------------------------
+// O Obsidian é um app de anotações que guarda cada nota como um .md comum.
+// Duas convenções dele aparecem aqui:
+//   [[Nome da nota]]  link para outra nota, pelo nome do arquivo (sem .md);
+//                     variações: [[nota#seção]], [[nota|apelido]], ![[nota]]
+//   frontmatter       bloco entre "---" no topo, com tags e outros metadados
+
+// Até 30 links por leitura: uma nota-índice com centenas de links não pode
+// encher a resposta.
+const MAX_LINKS = 30;
+// Captura só o nome do arquivo: para antes de "#" (seção), "^" (bloco) ou "|" (apelido).
+const WIKILINK = /!?\[\[([^[\]|#^\n]+)[^[\]\n]*\]\]/g;
+
+// O Obsidian acha o arquivo pelo nome, em qualquer pasta. Com o mesmo nome em
+// duas pastas, fica o caminho mais curto (o mais perto da raiz), como no app.
+// "pasta/nota" também vale: casa com o fim do caminho.
+function resolverLink(link: string, arquivos: string[]): string | undefined {
+    const alvo = link.trim().replace(/\\/g, '/').replace(/^\//, '').toLowerCase();
+    const nomes = [`${alvo}.md`, alvo];
+    const candidatos = arquivos.filter(arquivo => {
+        const caminho = arquivo.toLowerCase();
+        return nomes.some(nome => caminho === nome || caminho.endsWith(`/${nome}`));
+    });
+    candidatos.sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b));
+    return candidatos[0]?.split('/').join(sep);
+}
+
+// Lista os [[links]] de um texto e para qual arquivo cada um aponta (undefined =
+// não encontrado). Só entram arquivos que o servidor pode ler: um link para
+// .env ou para uma pasta do .studynotesignore aparece como não encontrado.
+export async function resolverLinks(texto: string): Promise<{ link: string; arquivo?: string }[]> {
+    const links = [...new Set([...texto.matchAll(WIKILINK)].map(m => m[1].trim()))].slice(0, MAX_LINKS);
+    if (!links.length) return [];
+    const arquivos = (await listNoteFiles(config.notesDir, enabledTypes()))
+        .map(file => relative(config.notesDir, file).split(sep).join('/'));
+    return links.map(link => ({ link, arquivo: resolverLink(link, arquivos) }));
+}
+
+// Troca as linhas do frontmatter por linhas vazias. Usado pela busca por
+// significado (PASSO 6): "tags: [rag]" e datas viram ruído no vetor do trecho.
+// Linhas vazias, e não removidas, para os números de linha continuarem certos.
+// A busca literal continua vendo o frontmatter (procurar "tags: rag" funciona).
+export function semFrontmatter(lines: string[]): string[] {
+    if (lines[0]?.trim() !== '---') return lines;
+    const fim = lines.findIndex((line, i) => i > 0 && (line.trim() === '---' || line.trim() === '...'));
+    if (fim < 0) return lines;
+    return lines.map((line, i) => (i <= fim ? '' : line));
 }
