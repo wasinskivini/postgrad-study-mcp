@@ -34,7 +34,7 @@
 import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import {
-    config, enabledTypes, listNoteFiles, readSearchableLines, resolveInsideNotes,
+    carregarExclusao, config, enabledTypes, listNoteFiles, readSearchableLines, resolveInsideNotes,
     searchNotes, typeOf, type Resultado, type Tipo,
 } from './service.ts';
 import { prepareUntrusted } from './safety.ts';
@@ -184,6 +184,11 @@ async function construirIndice(): Promise<void> {
     status.total = arquivos.length;
     status.feitos = 0;
     let alterados = 0;
+    // Vetor já calculado para cada texto: material de curso costuma ter cópias
+    // (a mesma aula em duas pastas), e um texto idêntico gera o mesmo vetor.
+    // Reaproveitar evita rodar o modelo de novo, que é a parte lenta.
+    const porTexto = new Map<string, string>();
+    for (const dados of indice.values()) for (const t of dados.trechos) porTexto.set(t.texto, t.vetor);
     for (const file of arquivos) {
         const arquivo = relative(config.notesDir, file);
         const info = await stat(file).catch(() => undefined);
@@ -194,12 +199,14 @@ async function construirIndice(): Promise<void> {
                 const { text, alertas } = prepareUntrusted(t.texto);
                 return { ...t, texto: text, alertas };
             });
-            const novos: ArquivoIndexado['trechos'] = [];
-            for (let i = 0; i < trechos.length; i += BATCH_SIZE) {
-                const lote = trechos.slice(i, i + BATCH_SIZE);
-                const vetoresLote = await embed(lote.map(t => `passage: ${t.texto}`));
-                lote.forEach((t, j) => novos.push({ ...t, vetor: toBase64(vetoresLote[j]) }));
+            // Só os textos ainda sem vetor passam pelo modelo, em lotes.
+            const faltando = [...new Set(trechos.map(t => t.texto).filter(texto => !porTexto.has(texto)))];
+            for (let i = 0; i < faltando.length; i += BATCH_SIZE) {
+                const lote = faltando.slice(i, i + BATCH_SIZE);
+                const vetoresLote = await embed(lote.map(texto => `passage: ${texto}`));
+                lote.forEach((texto, j) => porTexto.set(texto, toBase64(vetoresLote[j])));
             }
+            const novos = trechos.map(t => ({ ...t, vetor: porTexto.get(t.texto)! }));
             indice.set(arquivo, { mtimeMs: info.mtimeMs, size: info.size, trechos: novos });
             vetores.delete(arquivo);
             // Salva de tempos em tempos: se o servidor for encerrado no meio, o
@@ -255,13 +262,16 @@ export async function semanticSearch(pergunta: string, modulo?: string, tipos?: 
     // Passo b): filtros. O módulo passa pela checagem de caminho do PASSO 3.9.
     const prefixo = modulo ? relative(config.notesDir, await resolveInsideNotes(modulo)) + sep : '';
     const permitidos = enabledTypes(tipos?.length ? tipos : SEMANTIC_TYPES).filter(t => SEMANTIC_TYPES.includes(t));
+    // O índice só tira arquivos excluídos na próxima atualização (até 5 min);
+    // conferir aqui faz o .studynotesignore valer na hora.
+    const excluido = await carregarExclusao();
 
     // Passo c): vetor da pergunta e comparação com cada trecho.
     const [vetorPergunta] = await (await loadEmbedder())([`query: ${pergunta}`]);
     const candidatos: ResultadoSemantico[] = [];
     for (const [arquivo, dados] of indice) {
         if (prefixo && !arquivo.startsWith(prefixo)) continue;
-        if (!permitidos.includes(typeOf(arquivo)!)) continue;
+        if (!permitidos.includes(typeOf(arquivo)!) || excluido(arquivo)) continue;
         if (!vetores.has(arquivo)) vetores.set(arquivo, dados.trechos.map(t => fromBase64(t.vetor)));
         const vetoresArquivo = vetores.get(arquivo)!;
         dados.trechos.forEach((t, i) => candidatos.push({
