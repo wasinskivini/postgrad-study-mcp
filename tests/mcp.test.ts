@@ -106,6 +106,14 @@ describe('Study Notes MCP', () => {
             assert.strictEqual(client.getServerVersion()?.version, version)
         })
 
+        it('should suggest modules while typing the quiz argument', async () => {
+            const ref = { type: 'ref/prompt' as const, name: 'gerar_quiz' }
+            const modulos = await client.complete({ ref, argument: { name: 'modulo', value: '03' } })
+            assert.deepStrictEqual(modulos.completion.values, ['modulo03'])
+            const quantidades = await client.complete({ ref, argument: { name: 'quantidade', value: '1' } })
+            assert.deepStrictEqual(quantidades.completion.values, ['10', '15'])
+        })
+
         it('should list modules', async () => {
             const result = await callTool(client, 'listar_modulos')
             assert.deepStrictEqual(result.structuredContent.modulos, ['modulo01', 'modulo03'])
