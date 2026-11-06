@@ -125,7 +125,7 @@ Com o servidor rodando, no Copilot Chat (modo **Agent**):
 | `Já entendi a dúvida 2, pode marcar como resolvida` | `resolver_duvida` |
 | `Onde as aulas explicam como transformar texto em números?` | `buscar_material` (com a busca por significado ligada, acha mesmo sem as mesmas palavras) |
 
-Os prompts aparecem digitando `/` no chat: `/mcp.study-notes-mcp.gerar_quiz` e `/mcp.study-notes-mcp.plano_de_revisao`.
+Os prompts aparecem digitando `/` no chat: `/mcp.study-notes-mcp.gerar_quiz` e `/mcp.study-notes-mcp.plano_de_revisao`. No `gerar_quiz`, o servidor sugere os módulos que existem enquanto você digita o argumento `modulo`, em clientes que suportam autocompletar argumentos (*completions* do MCP). Nos outros, basta digitar o nome como aparece em `listar_modulos`.
 
 ### Como o quiz e o plano de revisão funcionam
 
@@ -184,9 +184,49 @@ Procure "registerTool" só no código
 
 Sem filtro, a busca olha todos os tipos, nesta ordem: **anotações, PDFs e por último código**. Ela devolve no máximo 20 resultados, até 3 por arquivo, para um arquivo só não ocupar a lista inteira. Se o limite for atingido, a resposta avisa: aí vale pedir "só nos PDFs" ou "só no módulo X".
 
+### Ignorando arquivos e pastas (`.studynotesignore`)
+
+Crie um arquivo `.studynotesignore` na raiz de `NOTES_DIR` para o servidor ignorar parte do material. O que estiver listado some das duas buscas, da leitura (`ler_material`) e da lista de módulos. Serve para:
+- **cópias repetidas**, como o mesmo curso baixado duas vezes;
+- **arquivos gerados** por ferramentas, que só repetem o que já está nas suas notas;
+- **pastas pessoais** que não devem ir para o modelo.
+
+O formato é o mesmo do `.gitignore`, com um padrão por linha:
+
+```gitignore
+# A cópia em ZIP repete os módulos 01 a 06 do clone; só os novos ficam
+curso-main/modulo0[1-6]*/
+
+# Arquivos gerados, em qualquer pasta
+tasks.md
+**/rascunhos/
+
+# Fora do alcance do modelo
+pessoal/
+```
+
+| Padrão | Casa com |
+|---|---|
+| `tasks.md` (sem `/`) | esse nome em qualquer pasta |
+| `pessoal/` (`/` no fim) | só pastas com esse nome |
+| `curso-main/modulo01/` (`/` no meio) | o caminho a partir da raiz de `NOTES_DIR` |
+| `*`, `?`, `[1-6]` | qualquer trecho de nome, um caractere, um caractere da lista |
+| `**` | qualquer número de pastas |
+
+As mudanças no arquivo valem na próxima busca, sem reiniciar o servidor. Exceções com `!` não são aceitas. Em **MCP: List Servers → Show Output**, a linha `.studynotesignore: N padrão(ões) de exclusão` confirma que o arquivo foi lido.
+
+Com a [busca por significado](#busca-por-significado-opcional) ligada, ignorar cópias e arquivos gerados também deixa a primeira indexação mais rápida. Textos idênticos já são calculados uma vez só, mas cada arquivo ainda precisa ser lido.
+
 ### PDFs e tokens
 
 O texto dos PDFs é extraído na sua máquina e fica em cache enquanto o arquivo não muda. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_material` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas.
+
+### Notas do Obsidian
+
+O [Obsidian](https://obsidian.md) é um app de anotações que guarda cada nota como um `.md` comum, então basta apontar `NOTES_DIR` para a pasta do seu cofre (*vault*). A pasta `.obsidian`, com as configurações do app, é ignorada como toda pasta oculta. Duas convenções do Obsidian são entendidas:
+
+- **`[[links]]`:** ao ler uma nota, `ler_material` lista para qual arquivo cada link aponta, e o modelo pode segui-lo. Vale também para `[[nota#seção]]`, `[[nota|apelido]]` e `![[nota]]`. Com o mesmo nome em duas pastas, fica o arquivo mais perto da raiz, como no app. Links para arquivos que o servidor não lê aparecem como "não encontrado".
+- **Frontmatter** (o bloco `---` no topo, com `tags:` e datas): fica fora da busca por significado, onde só atrapalharia. A busca literal continua achando, então procurar `tags: [rag` funciona.
 
 ### Busca por significado (opcional)
 
@@ -270,6 +310,7 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP (na nuvem, no
 - Lista fechada de extensões: `.env`, `.json`, chaves (`.pem`, `.key`) e qualquer outra extensão nunca são lidos
 - Arquivos e pastas ocultos (`.env`, `.git`, `.oculta/`) e `node_modules`, `dist`, `build`, `coverage`, `venv` são ignorados
 - Caminhos com `../` e symlinks que apontam para fora de `NOTES_DIR` são bloqueados
+- O que estiver no [`.studynotesignore`](#ignorando-arquivos-e-pastas-studynotesignore) não é buscado nem lido: use para pastas que não devem ir para o modelo
 - Segredos que aparecem no código (chaves `sk-…`, `ghp_…`, AWS, Google, Slack, chaves privadas, `apiKey = "…"`, `senha: "…"`, credenciais em URLs) são trocados por `[REDACTED]`
 
 **Prompt injection** — não existe proteção 100%, então são várias camadas:
@@ -318,7 +359,7 @@ tests/
 |---|---|---|
 | 1 | [src/index.ts](src/index.ts) | Como um servidor MCP sobe e por que o stdout é sagrado (1.1 a 1.5) |
 | 2 | [src/mcp.ts](src/mcp.ts) | Como declarar tools (2.3 a 2.8), resources (2.9) e prompts (2.10); instructions (2.1) e validação (2.2) |
-| 3 | [src/service.ts](src/service.ts) | Tipos, limites e filtros (3.1 a 3.3), PDFs (3.4, 3.8), busca (3.6), leitura (3.7), segurança de caminhos (3.9), dados (3.10) |
+| 3 | [src/service.ts](src/service.ts) | Tipos, limites, filtros e `.studynotesignore` (3.1 a 3.3), PDFs (3.4, 3.8), busca (3.6), leitura (3.7), segurança de caminhos (3.9), dados (3.10), formato do Obsidian (3.11) |
 | 4 | [src/safety.ts](src/safety.ts) | As camadas contra vazamento e prompt injection (4.1 a 4.5) |
 | 5 | [tests/](tests/) | Como testar um servidor MCP pelo próprio protocolo |
 | 6 | [src/semantic.ts](src/semantic.ts) | (Opcional) Embeddings na prática: dividir em trechos, indexar, buscar por similaridade (6.1 a 6.5) e juntar com a busca literal (6.6) |
