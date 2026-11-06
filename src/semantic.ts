@@ -324,6 +324,7 @@ const MAX_HYBRID_PER_FILE = 3;
 
 // Função pura (sem arquivos nem modelo): é testada sozinha.
 export function fundir(literais: Resultado[], semanticos: ResultadoSemantico[]): ResultadoHibrido[] {
+    // Pontos de quem ficou na posição N de uma lista: 1º lugar vale 1/61, 2º vale 1/62...
     const pontos = (posicao: number) => 1 / (RRF_K + posicao);
     // Onde duas buscas concordam (mesmo arquivo e mesma página), o resultado sobe.
     const lugar = (r: Resultado) => `${r.arquivo}|${r.pagina ?? ''}`;
@@ -334,6 +335,7 @@ export function fundir(literais: Resultado[], semanticos: ResultadoSemantico[]):
     };
     const naLiteral = melhorPosicao(literais);
     const naSemantica = melhorPosicao(semanticos);
+    // Bônus: os pontos que o mesmo arquivo/página fez na OUTRA busca (0 se ela não achou).
     const bonus = (r: Resultado, outra: Map<string, number>) => outra.has(lugar(r)) ? pontos(outra.get(lugar(r))!) : 0;
 
     // A chave inclui a linha: o mesmo trecho achado pelas duas buscas vira um só.
