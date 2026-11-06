@@ -14,7 +14,7 @@
  * Mapa deste arquivo:
  *   3.1  tipos de arquivo (o que pode ser lido)
  *   3.2  limites e configuração (variáveis de ambiente)
- *   3.3  filtros (arquivos e pastas bloqueados)
+ *   3.3  filtros (arquivos e pastas bloqueados, e o .studynotesignore)
  *   3.4  PDFs: extração de texto com cache e intervalo de páginas
  *   3.5  varredura das pastas e lista de módulos
  *   3.6  busca (searchNotes) — usada pela tool buscar_material
@@ -115,6 +115,82 @@ function isAllowedFile(name: string, tipos = enabledTypes()): boolean {
     return !isBlockedName(name) && tipo !== undefined && tipos.includes(tipo);
 }
 
+// .studynotesignore: arquivo opcional na raiz de NOTES_DIR, no estilo do
+// .gitignore, com o que o servidor deve ignorar (uma cópia repetida do curso,
+// arquivos gerados, uma pasta pessoal). O que casar some das duas buscas, da
+// leitura e da lista de módulos. Um padrão por linha:
+//   # comentário      linhas em branco e começadas com # não contam
+//   tasks.md          sem "/": casa com o nome em qualquer pasta
+//   curso-main/       "/" no fim: só pastas
+//   curso-main/mod0[1-6]*/   "/" no meio: caminho a partir da raiz de NOTES_DIR
+//   *  ?  [abc]       qualquer coisa (menos "/"), um caractere, um da lista
+//   **                qualquer coisa, inclusive "/" (ex.: **/rascunhos/)
+// Exceções com "!" não são aceitas: a linha é descartada.
+const IGNORE_FILE = '.studynotesignore';
+type Padrao = { regex: RegExp; soPastas: boolean; ancorado: boolean };
+export type Exclusao = (relativo: string, ehPasta?: boolean) => boolean;
+
+// Converte um padrão (glob) numa expressão regular que casa com o texto inteiro.
+function globParaRegex(glob: string): RegExp {
+    let re = '';
+    for (let i = 0; i < glob.length; i++) {
+        const c = glob[i];
+        if (c === '*' && glob[i + 1] === '*') {
+            // "**/" também casa com nenhuma pasta: "**/x" pega "x" na raiz.
+            if (glob[i + 2] === '/') { re += '(?:.*/)?'; i += 2; } else { re += '.*'; i++; }
+        } else if (c === '*') re += '[^/]*';
+        else if (c === '?') re += '[^/]';
+        else if (c === '[' && glob.indexOf(']', i + 2) > i) {
+            const fim = glob.indexOf(']', i + 2);
+            re += `[${glob.slice(i + 1, fim).replace(/^!/, '^').replace(/\\/g, '\\\\')}]`;
+            i = fim;
+        } else re += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    }
+    return new RegExp(`^${re}$`);
+}
+
+// Lê o conteúdo do .studynotesignore e devolve os padrões válidos.
+export function lerPadroes(conteudo: string): Padrao[] {
+    return conteudo.split(/\r?\n/)
+        .map(linha => linha.trim())
+        .filter(linha => linha && !linha.startsWith('#') && !linha.startsWith('!'))
+        .map(linha => {
+            const soPastas = linha.endsWith('/');
+            const padrao = linha.replace(/\/+$/, '');
+            return { regex: globParaRegex(padrao.replace(/^\//, '')), soPastas, ancorado: padrao.includes('/') };
+        });
+}
+
+// O arquivo é relido só quando muda (mtimeMs): editar o .studynotesignore vale
+// na próxima busca, sem reiniciar o servidor.
+let ignorados: { mtimeMs: number; padroes: Padrao[] } | undefined;
+async function carregarPadroes(): Promise<Padrao[]> {
+    const arquivo = join(config.notesDir, IGNORE_FILE);
+    const info = await stat(arquivo).catch(() => undefined);
+    if (!info?.isFile()) { ignorados = undefined; return []; }
+    if (ignorados?.mtimeMs !== info.mtimeMs) {
+        ignorados = { mtimeMs: info.mtimeMs, padroes: lerPadroes(await readFile(arquivo, 'utf8')) };
+        console.error(`${IGNORE_FILE}: ${ignorados.padroes.length} padrão(ões) de exclusão`);
+    }
+    return ignorados.padroes;
+}
+
+// Devolve a função que diz se um caminho (relativo a NOTES_DIR) está excluído.
+// Confere o caminho e cada pasta acima dele: ignorar "curso-main/" exclui tudo
+// que está dentro.
+export async function carregarExclusao(): Promise<Exclusao> {
+    const padroes = await carregarPadroes();
+    return (relativo, ehPasta = false) => {
+        if (!padroes.length) return false;
+        const partes = relativo.split(sep).join('/').split('/');
+        return partes.some((nome, i) => {
+            const caminho = partes.slice(0, i + 1).join('/');
+            const pasta = i < partes.length - 1 || ehPasta;
+            return padroes.some(p => (!p.soPastas || pasta) && p.regex.test(p.ancorado ? caminho : nome));
+        });
+    };
+}
+
 // ----------------------------------------------------------------------------
 // 3.4 — PDFs: EXTRAÇÃO COM CACHE
 // ----------------------------------------------------------------------------
@@ -175,12 +251,18 @@ function isInside(base: string, target: string): boolean {
 // É recursiva: para cada subpasta, chama a si mesma. Pastas bloqueadas (3.3)
 // são puladas inteiras, sem nem entrar nelas.
 export async function listNoteFiles(dir: string, tipos: Tipo[]): Promise<string[]> {
+    return percorrer(dir, tipos, await carregarExclusao());
+}
+
+async function percorrer(dir: string, tipos: Tipo[], excluido: Exclusao): Promise<string[]> {
     const entries = await readdir(dir, { withFileTypes: true });
     const files: string[] = [];
     for (const entry of entries) {
         if (isBlockedName(entry.name)) continue;
         const fullPath = join(dir, entry.name);
-        if (entry.isDirectory()) files.push(...await listNoteFiles(fullPath, tipos));
+        // Pastas excluídas pelo .studynotesignore são puladas inteiras, como as bloqueadas.
+        if (excluido(relative(config.notesDir, fullPath), entry.isDirectory())) continue;
+        if (entry.isDirectory()) files.push(...await percorrer(fullPath, tipos, excluido));
         else if (entry.isFile() && isAllowedFile(entry.name, tipos)) files.push(fullPath);
     }
     return files;
@@ -202,8 +284,9 @@ export async function readSearchableLines(file: string): Promise<{ pagina?: numb
 // Módulos = subpastas de primeiro nível de NOTES_DIR (em ordem alfabética).
 export async function listModules(): Promise<string[]> {
     const entries = await readdir(config.notesDir, { withFileTypes: true });
+    const excluido = await carregarExclusao();
     return entries
-        .filter(entry => entry.isDirectory() && !isBlockedName(entry.name))
+        .filter(entry => entry.isDirectory() && !isBlockedName(entry.name) && !excluido(entry.name, true))
         .map(entry => entry.name)
         .sort();
 }
@@ -261,6 +344,9 @@ export async function readNote(path: string, paginas?: string): Promise<{ text: 
     if (segments.some(isBlockedName) || !isAllowedFile(segments.at(-1)!)) {
         const extensions = enabledTypes().flatMap(tipo => FILE_TYPES[tipo]).join(', ');
         throw new Error(`Arquivo não permitido: ${path}. Só são lidos ${extensions} fora de pastas ocultas.`);
+    }
+    if ((await carregarExclusao())(relative(config.notesDir, fullPath))) {
+        throw new Error(`Arquivo ignorado pelo ${IGNORE_FILE}: ${path}`);
     }
     const info = await stat(fullPath);
     if (!info.isFile()) throw new Error(`Não é um arquivo: ${path}`);

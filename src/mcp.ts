@@ -32,6 +32,8 @@
  */
 import { readFileSync } from 'node:fs'
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+// completable: sugere valores para um argumento enquanto o usuário digita (2.10).
+import { completable } from "@modelcontextprotocol/sdk/server/completable.js"
 
 // Zod descreve e valida os parâmetros. O SDK converte esses schemas em JSON
 // Schema e os envia ao cliente na lista de tools (tools/list).
@@ -440,9 +442,22 @@ server.registerPrompt(
     {
         description: 'Gera um quiz sobre um módulo com base nas suas anotações',
         // Argumentos de prompt são sempre strings (o VS Code mostra campos de texto).
+        // completable() responde ao pedido de autocompletar do cliente
+        // (completion/complete): enquanto o usuário digita "mod", o servidor
+        // sugere os módulos que contêm esse texto. Clientes sem suporte só
+        // mostram o campo de texto comum.
         argsSchema: {
-            modulo: shortText(150).describe("Módulo do quiz, como retornado por listar_modulos"),
-            quantidade: z.string().regex(/^\d{1,2}$/, 'Use um número de 1 a 20').optional().describe("Número de perguntas (padrão 5, máximo 20)")
+            modulo: completable(
+                shortText(150).describe("Módulo do quiz, como retornado por listar_modulos"),
+                async digitado => {
+                    const parte = (digitado ?? '').toLowerCase()
+                    return (await listModules()).filter(modulo => modulo.toLowerCase().includes(parte))
+                },
+            ),
+            quantidade: completable(
+                z.string().regex(/^\d{1,2}$/, 'Use um número de 1 a 20').optional().describe("Número de perguntas (padrão 5, máximo 20)"),
+                digitado => ['5', '10', '15', '20'].filter(n => n.startsWith(digitado ?? '')),
+            ),
         }
     },
     async ({ modulo, quantidade }) => {
