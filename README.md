@@ -194,8 +194,9 @@ Crie um arquivo `.studynotesignore` na raiz de `NOTES_DIR` para o servidor ignor
 O formato é o mesmo do `.gitignore`, com um padrão por linha:
 
 ```gitignore
-# A cópia em ZIP repete os módulos 01 a 06 do clone; só os novos ficam
-curso-main/modulo0[1-6]*/
+# Pastas da cópia em ZIP idênticas ao clone (conferido pelo conteúdo, veja abaixo)
+curso-main/modulo01-fundamentos/
+curso-main/modulo02-integracao/
 
 # Arquivos gerados, em qualquer pasta
 tasks.md
@@ -212,6 +213,18 @@ pessoal/
 | `curso-main/modulo01/` (`/` no meio) | o caminho a partir da raiz de `NOTES_DIR` |
 | `*`, `?`, `[1-6]` | qualquer trecho de nome, um caractere, um caractere da lista |
 | `**` | qualquer número de pastas |
+
+#### Cuidado com cópias: compare o conteúdo, não o nome
+
+O `.studynotesignore` decide pelo **caminho**, sem olhar o conteúdo. Duas pastas com o mesmo nome podem ter arquivos diferentes: uma versão mais nova do curso, ou as suas alterações nos exercícios. Ignorar a pasta inteira esconde essas diferenças sem aviso.
+
+Antes de ignorar uma cópia:
+1. **Compare o conteúdo,** por exemplo com `diff -rq pasta-a pasta-b` no Mac e no Linux, ou com a comparação de pastas de uma ferramenta como o WinMerge no Windows.
+2. **Ignore só o que for idêntico.** Se uma pasta tiver qualquer arquivo diferente ou a mais, liste as subpastas e os arquivos iguais um a um, em vez da pasta inteira.
+3. **Prefira nomes exatos a curingas.** `curso-main/modulo0[1-6]*/` parece ignorar só os módulos 1 a 6 repetidos, mas também pega um `modulo04-versao-nova/` que só existe na cópia.
+4. **Refaça a comparação** quando baixar uma versão nova do material: o arquivo não se atualiza sozinho.
+
+Textos idênticos que não forem ignorados não custam tempo de indexação, porque o vetor é calculado uma vez só. Eles só aparecem repetidos nos resultados da busca literal.
 
 As mudanças no arquivo valem na próxima busca, sem reiniciar o servidor. Exceções com `!` não são aceitas. Em **MCP: List Servers → Show Output**, a linha `.studynotesignore: N padrão(ões) de exclusão` confirma que o arquivo foi lido.
 
