@@ -331,6 +331,8 @@ async function resumoDeEstudos() {
     return { duvidas, progresso, texto }
 }
 
+// A tool só repassa o resumo acima: texto para o modelo ler e structuredContent
+// para clientes que usam os dados.
 server.registerTool(
     'ver_estudos',
     {
@@ -401,6 +403,7 @@ server.registerResource(
     })
 )
 
+// O mesmo formato, para as dúvidas (inclui as resolvidas: é o histórico completo).
 server.registerResource(
     'pos://duvidas',
     'pos://duvidas',
@@ -480,6 +483,7 @@ server.registerPrompt(
     }
 )
 
+// Sem argumentos: o plano sai das dúvidas e do progresso já registrados.
 server.registerPrompt(
     'plano_de_revisao',
     {
