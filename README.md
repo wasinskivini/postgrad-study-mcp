@@ -148,8 +148,8 @@ No `plano_de_revisao`, o próprio servidor lê as suas dúvidas e o seu progress
 | 🔧 Tool | `marcar_aula_concluida` | Marca uma aula como concluída |
 | 🔧 Tool | `resolver_duvida` | Marca uma dúvida como resolvida pelo número (`#2`); ela sai do plano de revisão mas continua no histórico |
 | 🔧 Tool | `ver_estudos` | Lista as dúvidas não resolvidas e as aulas concluídas (o modelo não consegue abrir resources sozinho, então os mesmos dados também existem como tool) |
-| 📄 Resource | `pos://duvidas` | Dúvidas registradas (JSON) |
-| 📄 Resource | `pos://progresso` | Aulas concluídas por módulo (JSON) |
+| 📄 Resource | `estudos://duvidas` | Dúvidas registradas (JSON) |
+| 📄 Resource | `estudos://progresso` | Aulas concluídas por módulo (JSON) |
 | 💬 Prompt | `gerar_quiz` | Quiz de múltipla escolha sobre um módulo, baseado nas suas anotações, com a fonte de cada resposta |
 | 💬 Prompt | `plano_de_revisao` | Plano de revisão da semana a partir das dúvidas e do progresso, com a fonte de cada indicação |
 
