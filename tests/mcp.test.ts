@@ -190,14 +190,14 @@ describe('Study Notes MCP', () => {
 
         it('should register a doubt and expose it as a resource', async () => {
             await callTool(client, 'registrar_duvida', { modulo: 'modulo03', texto: 'Quando usar resource vs tool?' })
-            const duvidas = await readJsonResource(client, 'pos://duvidas')
+            const duvidas = await readJsonResource(client, 'estudos://duvidas')
             assert.strictEqual(duvidas[0].texto, 'Quando usar resource vs tool?')
         })
 
         it('should track progress without duplicates', async () => {
             await callTool(client, 'marcar_aula_concluida', { modulo: 'modulo03', aula: '05' })
             await callTool(client, 'marcar_aula_concluida', { modulo: 'modulo03', aula: '05' })
-            assert.deepStrictEqual(await readJsonResource(client, 'pos://progresso'), { modulo03: ['05'] })
+            assert.deepStrictEqual(await readJsonResource(client, 'estudos://progresso'), { modulo03: ['05'] })
         })
 
         it('should list doubts and progress as a tool', async () => {
@@ -259,7 +259,7 @@ describe('Study Notes MCP', () => {
             const depois = await callTool(client, 'ver_estudos')
             assert.deepStrictEqual(depois.structuredContent.duvidas, [])
             // Continua no histórico (resource), só que como resolvida.
-            const [duvida] = await readJsonResource(client, 'pos://duvidas')
+            const [duvida] = await readJsonResource(client, 'estudos://duvidas')
             assert.strictEqual(duvida.resolvida, true)
         })
 
