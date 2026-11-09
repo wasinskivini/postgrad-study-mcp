@@ -13,6 +13,44 @@ Obrigado pelo interesse! Este é um projeto educacional da pós, e contribuiçõ
 
 Para mudanças grandes (uma tool nova, outra forma de busca), abra uma issue primeiro: assim combinamos a ideia antes de você investir tempo no código.
 
+## Rodando a partir do código-fonte
+
+Para estudar o código, contribuir ou testar mudanças antes de publicar:
+
+```bash
+git clone https://github.com/wasinskivini/study-notes-mcp.git
+cd study-notes-mcp
+npm install
+npm test
+```
+
+No `mcp.json` do VS Code, troque `command` e `args` pelo Node rodando o TypeScript direto, sem build:
+
+```json
+"command": "node",
+"args": ["/Users/seu-usuario/study-notes-mcp/src/index.ts"]
+```
+
+Para atualizar: `git pull && npm install` e reinicie o servidor. Com o código-fonte, a [busca por significado](docs/busca-por-significado.md) só precisa de `"SEMANTIC_SEARCH": "true"`, porque o `npm install` já instala a biblioteca.
+
+### Scripts
+
+| Script | Descrição |
+|---|---|
+| `npm start` | Inicia o servidor direto do TypeScript |
+| `npm run build` | Compila para JavaScript em `dist/`, o que vai para o npm (roda sozinho no `npm pack` e no `npm publish`) |
+| `npm run dev` | Inicia com file-watch e o inspector do Node.js |
+| `npm test` | Roda os testes de integração |
+| `npm run typecheck` | Verifica os tipos com `tsc` (o Node só remove os tipos, não os checa) |
+| `npm run test:dev` | Testes em modo watch |
+| `npm run test:semantic` | Testes da busca semântica e a avaliação das buscas, com o modelo de verdade (baixa ~145 MB na primeira vez) |
+| `npm run test:pack` | Gera o pacote do npm, instala numa pasta vazia e sobe o servidor por ele |
+| `npm run mcp:inspect` | Abre o MCP Inspector usando as anotações de exemplo de `tests/fixtures` |
+
+Os testes sobem o servidor via stdio com uma cópia temporária de `tests/fixtures/notas` e um `DATA_DIR` temporário, então não tocam nos seus dados reais.
+
+A cada push na `main` e em todo pull request, o GitHub Actions roda `typecheck` e `test` no Ubuntu, no macOS e no Windows, com Node 22 e 24. Dois jobs separados testam o pacote do npm (todos os testes contra o `dist/` compilado, com `TEST_DIST=1`, mais o `test:pack`) e a busca semântica com o modelo de verdade. As dependências são atualizadas pelo [Dependabot](.github/dependabot.yml) uma vez por mês, num PR testado pelo CI. O `@huggingface/transformers` fica de fora, porque a versão dele está fixada na documentação da busca por significado e muda à mão.
+
 ## Fluxo de contribuição
 
 ### 1. Faça um fork e clone
@@ -40,7 +78,7 @@ git checkout -b docs/nome-curto      # só documentação
 
 ### 3. Entenda o código antes de mudar
 
-O código é comentado como um **roteiro de leitura em passos** (1 = `index.ts`, 2 = `mcp.ts`, 3 = `service.ts`, 4 = `safety.ts`, 5 = testes). Comece pela seção [Entendendo o código](README.md#entendendo-o-código) do README.
+O código é comentado como um **roteiro de leitura em passos** (1 = `index.ts`, 2 = `mcp.ts`, 3 = `service.ts`, 4 = `safety.ts`, 5 = testes). Comece pelo guia [Entendendo o código](docs/entendendo-o-codigo.md).
 
 ### 4. Faça a mudança seguindo as convenções
 
@@ -51,7 +89,7 @@ O código é comentado como um **roteiro de leitura em passos** (1 = `index.ts`,
 - **Todo texto vindo de arquivo passa por `prepareUntrusted` e sai por `wrapUntrusted`** (PASSO 4.4 e 4.5). Não devolva conteúdo de arquivo ao modelo sem essas camadas.
 - **Nada de LLM nem de rede no servidor.** O projeto é determinístico, local e gratuito de propósito. A única exceção é a busca semântica opcional (PASSO 6), que baixa uma vez um modelo de embeddings e roda tudo localmente. Se a sua ideia precisa de API externa, discuta numa issue antes.
 - **Descrições de tools importam:** são o "manual" que o modelo lê para decidir o que chamar. Seja claro sobre o que a tool faz e quando usá-la.
-- **Comentários de passo em dia:** se mudar um fluxo, atualize os números citados (2.4, 3.6…) nos comentários e no README.
+- **Comentários de passo em dia:** se mudar um fluxo, atualize os números citados (2.4, 3.6…) nos comentários e em [docs/entendendo-o-codigo.md](docs/entendendo-o-codigo.md).
 - **Caracteres invisíveis só como escape** (`\u200B`), nunca o caractere em si — um teste falha se isso acontecer.
 - **Siga o estilo do arquivo** que você está editando (aspas, ponto e vírgula, indentação de 4 espaços).
 

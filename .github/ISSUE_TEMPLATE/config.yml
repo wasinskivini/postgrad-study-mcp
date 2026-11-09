@@ -3,6 +3,6 @@ contact_links:
   - name: 🔒 Reportar falha de segurança
     url: https://github.com/wasinskivini/study-notes-mcp/security/advisories/new
     about: Use o reporte privado. Não abra issue pública para vulnerabilidades.
-  - name: 📖 Guia de instalação e problemas comuns
-    url: https://github.com/wasinskivini/study-notes-mcp#instalação-passo-a-passo
-    about: Antes de abrir uma issue, confira se o problema já está na seção de problemas comuns do README.
+  - name: 📖 Problemas comuns
+    url: https://github.com/wasinskivini/study-notes-mcp/blob/main/docs/problemas-comuns.md
+    about: Antes de abrir uma issue, confira se o problema já está na lista de problemas comuns.
