@@ -42,6 +42,8 @@ Busque "embeddings" só nos PDFs das aulas
 Procure "registerTool" só no código do modulo03
 ```
 
+O filtro de módulo aceita qualquer subpasta, não só as de primeiro nível: num repositório de curso clonado, os módulos de verdade costumam ficar um nível abaixo (`repo-do-curso/modulo03-mcp`). O `listar_modulos` mostra essas subpastas recuadas, com o caminho completo, quando o nome delas começa com "modulo", "aula", "unidade" ou "semana". No `/gerar_quiz`, o autocompletar procura em até três níveis de pastas.
+
 Sem filtro, a busca olha todos os tipos, nesta ordem: **anotações, PDFs e por último código**. Ela devolve no máximo 20 resultados, até 3 por arquivo, para um arquivo só não ocupar a lista inteira. Se o limite for atingido, a resposta avisa: aí vale pedir "só nos PDFs" ou "só no módulo X".
 
 ## Ignorando arquivos e pastas (`.studynotesignore`)

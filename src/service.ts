@@ -294,6 +294,60 @@ export async function listModules(): Promise<string[]> {
         .sort();
 }
 
+// Nem todo material segue "uma pasta por módulo": um repositório de curso
+// clonado vira UMA pasta de primeiro nível, com os módulos de verdade um nível
+// abaixo (curso/modulo03-mcp). Por isso o quiz e a busca aceitam qualquer
+// subpasta, e estas funções ajudam a achá-las.
+const MAX_NIVEL_PASTAS = 3;
+// Nomes que parecem módulo ou aula, usados por listar_modulos para apontar
+// os módulos que estão dentro de uma pasta de primeiro nível.
+const NOME_DE_MODULO = /^(m[oó]dulo|module|aula|lesson|unidade|semana|week)/i;
+
+// Todas as pastas visíveis até MAX_NIVEL_PASTAS níveis, como caminhos
+// relativos a NOTES_DIR (usado pelo autocompletar do gerar_quiz).
+export async function listarPastas(): Promise<string[]> {
+    const excluido = await carregarExclusao();
+    const pastas: string[] = [];
+    async function descer(dir: string, nivel: number): Promise<void> {
+        const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+        for (const entry of entries) {
+            if (!entry.isDirectory() || isBlockedName(entry.name)) continue;
+            const fullPath = join(dir, entry.name);
+            const relativo = relative(config.notesDir, fullPath);
+            if (excluido(relativo, true)) continue;
+            pastas.push(relativo);
+            if (nivel < MAX_NIVEL_PASTAS) await descer(fullPath, nivel + 1);
+        }
+    }
+    await descer(config.notesDir, 1);
+    return pastas.sort();
+}
+
+// Subpastas com nome de módulo dentro de um módulo de primeiro nível.
+export async function listarSubmodulos(modulo: string): Promise<string[]> {
+    const entries = await readdir(join(config.notesDir, modulo), { withFileTypes: true }).catch(() => []);
+    const excluido = await carregarExclusao();
+    return entries
+        .filter(entry => entry.isDirectory() && NOME_DE_MODULO.test(entry.name) && !isBlockedName(entry.name)
+            && !excluido(join(modulo, entry.name), true))
+        .map(entry => entry.name)
+        .sort();
+}
+
+// Confere se "caminho" é uma pasta de estudo válida (existe, fica dentro de
+// NOTES_DIR, não é oculta nem excluída) e devolve o caminho relativo. Usado
+// pelo gerar_quiz: o argumento não pode virar um canal para texto arbitrário.
+export async function validarPasta(caminho: string): Promise<string> {
+    const fullPath = await resolveInsideNotes(caminho).catch(() => undefined);
+    const info = fullPath ? await stat(fullPath).catch(() => undefined) : undefined;
+    const relativo = fullPath ? relative(config.notesDir, fullPath) : '';
+    if (!fullPath || !info?.isDirectory() || !relativo || relativo.split(sep).some(isBlockedName)
+        || (await carregarExclusao())(relativo, true)) {
+        throw new Error(`Módulo "${caminho}" não encontrado`);
+    }
+    return relativo;
+}
+
 // ----------------------------------------------------------------------------
 // 3.6 — BUSCA (usada pela tool buscar_material, PASSO 2.4)
 // ----------------------------------------------------------------------------
