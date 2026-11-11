@@ -234,6 +234,31 @@ describe('Study Notes MCP', () => {
             assert.ok(item.text.includes(`"${join('curso', 'modulo05-avancado')}"`))
         })
 
+        // Clientes sem autocompletar (Claude Code) mandam o que o usuário digitou.
+        it('should find the quiz module by a short name or number', async () => {
+            const textoDo = async (modulo: string) => {
+                const result = await client.getPrompt({ name: 'gerar_quiz', arguments: { modulo } })
+                return (result.messages.at(0)?.content as unknown as { text: string }).text
+            }
+            const aninhado = `"${join('curso', 'modulo05-avancado')}"`
+            assert.ok((await textoDo('5')).includes(aninhado))
+            assert.ok((await textoDo('Módulo 05')).includes(aninhado))
+            assert.ok((await textoDo('avancado')).includes(aninhado))
+        })
+
+        it('should ask which folder when the quiz module matches more than one', async () => {
+            const result = await client.getPrompt({ name: 'gerar_quiz', arguments: { modulo: 'modulo' } })
+            const text = (result.messages.at(0)?.content as unknown as { text: string }).text
+            assert.match(text, /mais de uma pasta/)
+            assert.ok(text.includes('- modulo01') && text.includes('- modulo03'))
+        })
+
+        it('should ask for the module when gerar_quiz has none', async () => {
+            const result = await client.getPrompt({ name: 'gerar_quiz', arguments: {} })
+            const text = (result.messages.at(0)?.content as unknown as { text: string }).text
+            assert.match(text, /chame listar_modulos/)
+        })
+
         it('should ask the quiz to cite sources only with the answers', async () => {
             const result = await client.getPrompt({ name: 'gerar_quiz', arguments: { modulo: 'modulo03' } })
             const item = result.messages.at(0)?.content as unknown as { text: string }
