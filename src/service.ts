@@ -334,6 +334,36 @@ export async function listarSubmodulos(modulo: string): Promise<string[]> {
         .sort();
 }
 
+// Forma comparável de um nome de pasta: sem acentos, maiúsculas, espaços e
+// pontuação, e sem zeros à esquerda ("Módulo 03-MCP" → "modulo3mcp"). Assim
+// "modulo 3", "modulo03" e "Módulo-3" caem no mesmo lugar.
+function normalizarNome(texto: string): string {
+    return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+        .replace(/[^a-z0-9]/g, '').replace(/\d+/g, numero => String(Number(numero)));
+}
+const MAX_PASTAS_ENCONTRADAS = 10;
+
+// Acha as pastas que o usuário quis dizer com um texto curto, para clientes
+// sem autocompletar (no Claude Code, por exemplo, o argumento é digitado à mão):
+//   caminho exato          → só ele ("curso/modulo03-mcp")
+//   só um número ("3")     → pastas que começam com modulo/aula/unidade... 3
+//   outro texto ("mcp")    → pastas cujo nome contém o texto
+// As mais rasas vêm primeiro. Mais de uma = quem chamou pergunta ao usuário.
+export async function encontrarPastas(texto: string): Promise<string[]> {
+    const exata = await validarPasta(texto).catch(() => undefined);
+    if (exata) return [exata];
+    const alvo = normalizarNome(texto);
+    if (!alvo) return [];
+    const comCaminho = /[\\/]/.test(texto);
+    const casa = /^\d+$/.test(alvo)
+        ? (pasta: string) => new RegExp(`^(modulo|module|aula|lesson|unidade|semana|week)${alvo}(\\D|$)`).test(normalizarNome(pasta.split(sep).at(-1)!))
+        : (pasta: string) => normalizarNome(comCaminho ? pasta : pasta.split(sep).at(-1)!).includes(alvo);
+    return (await listarPastas())
+        .filter(casa)
+        .sort((a, b) => a.split(sep).length - b.split(sep).length || a.localeCompare(b))
+        .slice(0, MAX_PASTAS_ENCONTRADAS);
+}
+
 // Confere se "caminho" é uma pasta de estudo válida (existe, fica dentro de
 // NOTES_DIR, não é oculta nem excluída) e devolve o caminho relativo. Usado
 // pelo gerar_quiz: o argumento não pode virar um canal para texto arbitrário.

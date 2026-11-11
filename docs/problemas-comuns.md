@@ -11,6 +11,7 @@
 | O modelo responde sem usar o servidor | Seja explícito: "consulte minhas anotações sobre…", ou cite a tool com `#buscar_material` |
 | Digitando `/` não aparecem `gerar_quiz` nem `plano_de_revisao` | A conversa está numa sessão **Copilot CLI**, que não mostra prompts de MCP. Abra um chat na sessão **Local**, modo **Agent**, e digite `/mcp.study-notes` |
 | O chat leu um arquivo que o servidor bloqueia (`.zshrc`, `package.json`...) | Quem leu foi o **próprio Copilot**, com a ferramenta embutida dele (aparece "Read arquivo", não "Ran ler_material"). As proteções deste servidor valem só para o que passa por ele. Para testar o servidor, cite a tool: `#ler_material` |
+| No Claude Code, `/gerar_quiz` não mostra opções de módulo | O Claude Code não usa o autocompletar do MCP, e separa os argumentos por espaço. Digite só o número ou um trecho do nome, sem espaços (`/mcp__study-notes-mcp__gerar_quiz 3`), ou deixe vazio para o assistente perguntar |
 | Parei o servidor e ele voltou sozinho | O VS Code reinicia servidores a cada conversa nova. Para desligar de verdade, remova a entrada do `mcp.json` |
 | A busca avisa que "a busca por significado não está disponível" | Falta a biblioteca de embeddings ou não deu para baixar o modelo. Veja [como ligar](busca-por-significado.md#como-ligar). Enquanto isso, a busca literal funciona normalmente |
 
