@@ -25,7 +25,7 @@ Copilot:  Chunking divide documentos grandes em trechos menores antes de gerar
 
 **1. Pré-requisitos:** **Node.js 22.18 ou mais novo** (confira com `node -v`) e o **VS Code** com o **GitHub Copilot** (o plano Free funciona), ou outro cliente MCP.
 
-**2. Escolha a pasta de estudos.** Ela vira o `NOTES_DIR`, e cada subpasta de primeiro nível vira um módulo. Não precisa reorganizar nada: aponte para onde você já guarda o material.
+**2. Escolha a pasta de estudos.** Ela vira o `NOTES_DIR`, e cada subpasta de primeiro nível vira um módulo. Não precisa reorganizar nada: aponte para onde você já guarda o material. Se um módulo estiver dentro de outra pasta, como num repositório de curso clonado, use o caminho completo (`repo-do-curso/modulo03-mcp`).
 
 ```
 Pós IA/
