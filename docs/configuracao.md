@@ -31,7 +31,7 @@ As variáveis vão no bloco `"env"` do `mcp.json` (veja o passo 3 do [README](..
 | `codigo` | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.py` | 200 KB |
 | `pdf` | `.pdf` (só PDFs com texto; escaneados são recusados com aviso) | 30 MB, leitura de até 5 páginas por vez |
 
-Qualquer outra extensão nunca é lida, assim como arquivos e pastas ocultos (`.env`, `.git`) e pastas como `node_modules`, `dist` e `venv`. Arquivos novos aparecem na próxima busca, sem reiniciar o servidor.
+Qualquer outra extensão nunca é lida, assim como arquivos e pastas ocultos (`.env`, `.git`) e pastas como `node_modules`, `dist` e `venv`. Pastas sem nenhum arquivo lido (por exemplo, só com `.json` ou `.sh`) não aparecem como módulo nem nas sugestões do quiz. Arquivos novos aparecem na próxima busca, sem reiniciar o servidor.
 
 ## Filtrando a busca
 

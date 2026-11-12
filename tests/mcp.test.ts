@@ -67,6 +67,11 @@ async function createNotesDir(root: string) {
     await mkdir(join(notesDir, 'curso', 'src'))
     await writeFile(join(notesDir, 'curso', 'modulo05-avancado', 'aula.md'), 'Aula do modulo aninhado')
 
+    // Uma pasta sem nada que o servidor lê (só .json e .sh): não pode virar módulo.
+    await mkdir(join(notesDir, 'so-config'))
+    await writeFile(join(notesDir, 'so-config', 'data.json'), '{"modelo": "llama"}')
+    await writeFile(join(notesDir, 'so-config', 'request.sh'), 'curl http://localhost:11434')
+
     // Nota no formato do Obsidian: frontmatter e [[links]] (PASSO 3.11).
     await writeFile(join(notesDir, 'modulo01', 'obsidian.md'), [
         '---',
@@ -251,6 +256,18 @@ describe('Study Notes MCP', () => {
             const text = (result.messages.at(0)?.content as unknown as { text: string }).text
             assert.match(text, /mais de uma pasta/)
             assert.ok(text.includes('- modulo01') && text.includes('- modulo03'))
+        })
+
+        it('should hide folders without readable material from modules and suggestions', async () => {
+            const result = await callTool(client, 'listar_modulos')
+            assert.ok(!result.structuredContent.modulos.includes('so-config'))
+            const ref = { type: 'ref/prompt' as const, name: 'gerar_quiz' }
+            const sugestoes = await client.complete({ ref, argument: { name: 'modulo', value: 'config' } })
+            assert.deepStrictEqual(sugestoes.completion.values, [])
+            await assert.rejects(
+                client.getPrompt({ name: 'gerar_quiz', arguments: { modulo: 'so-config' } }),
+                /não tem arquivos que o servidor lê/,
+            )
         })
 
         it('should ask for the module when gerar_quiz has none', async () => {
