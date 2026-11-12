@@ -26,7 +26,7 @@
  *
  * A busca semântica (opcional) fica separada, no PASSO 6 (semantic.ts).
  */
-import { readdir, readFile, writeFile, mkdir, realpath, rename, stat } from 'node:fs/promises';
+import { readdir, readFile, writeFile, mkdir, realpath, rename, rm, stat } from 'node:fs/promises';
 import { extname, join, relative, resolve, sep } from 'node:path';
 import { homedir } from 'node:os';
 // unpdf: extrai o texto de PDFs usando o pdf.js da Mozilla, sem dependências nativas.
@@ -559,7 +559,31 @@ export async function gravarAtomico(caminho: string, conteudo: string): Promise<
     await mkdir(config.dataDir, { recursive: true, mode: 0o700 });
     const temporario = `${caminho}.${process.pid}.tmp`;
     await writeFile(temporario, conteudo, { mode: 0o600 });
-    await rename(temporario, caminho);
+    try {
+        await tentarDeNovo(() => rename(temporario, caminho));
+    } catch (error) {
+        // Não deixa o temporário para trás; o arquivo original continua intacto.
+        await rm(temporario, { force: true });
+        throw error;
+    }
+}
+
+// No Windows, renomear por cima de um arquivo falha (EPERM, EBUSY, EACCES)
+// enquanto outro processo o tem aberto: outro cliente lendo as dúvidas, ou o
+// antivírus examinando o arquivo. Costuma durar milissegundos, então tenta de
+// novo algumas vezes, esperando um pouco mais a cada vez (50, 100, 150... ms).
+const ERROS_TEMPORARIOS = new Set(['EPERM', 'EBUSY', 'EACCES']);
+const MAX_TENTATIVAS = 5;
+export async function tentarDeNovo<T>(acao: () => Promise<T>): Promise<T> {
+    for (let tentativa = 1; ; tentativa++) {
+        try {
+            return await acao();
+        } catch (error) {
+            const codigo = (error as NodeJS.ErrnoException).code ?? '';
+            if (tentativa >= MAX_TENTATIVAS || !ERROS_TEMPORARIOS.has(codigo)) throw error;
+            await new Promise(resolve => setTimeout(resolve, 50 * tentativa));
+        }
+    }
 }
 
 async function writeJson(name: string, data: unknown): Promise<void> {

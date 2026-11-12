@@ -7,7 +7,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { dividirEmTrechos, fundir, similaridade } from '../src/semantic.ts'
-import { semFrontmatter } from '../src/service.ts'
+import { semFrontmatter, tentarDeNovo } from '../src/service.ts'
 
 describe('busca semântica: sem modelo', () => {
     it('should split long files into chunks that keep the starting line', () => {
@@ -69,5 +69,29 @@ describe('formato do Obsidian: semFrontmatter', () => {
     it('should keep notes without frontmatter, or with an unclosed one, as they are', () => {
         assert.deepStrictEqual(semFrontmatter(['# Aula', '---', 'x']), ['# Aula', '---', 'x'])
         assert.deepStrictEqual(semFrontmatter(['---', 'sem fim']), ['---', 'sem fim'])
+    })
+})
+
+// Gravação no Windows (PASSO 3.10): sem Windows à mão, o teste simula o erro.
+describe('dados salvos: tentarDeNovo', () => {
+    const erro = (code: string) => Object.assign(new Error(code), { code })
+
+    it('should retry while the file is temporarily locked', async () => {
+        let chamadas = 0
+        const resultado = await tentarDeNovo(async () => {
+            if (++chamadas < 3) throw erro('EPERM')
+            return 'gravado'
+        })
+        assert.strictEqual(resultado, 'gravado')
+        assert.strictEqual(chamadas, 3)
+    })
+
+    it('should give up after five attempts, and not retry other errors', async () => {
+        let chamadas = 0
+        await assert.rejects(tentarDeNovo(async () => { chamadas++; throw erro('EBUSY') }), /EBUSY/)
+        assert.strictEqual(chamadas, 5)
+        chamadas = 0
+        await assert.rejects(tentarDeNovo(async () => { chamadas++; throw erro('ENOSPC') }), /ENOSPC/)
+        assert.strictEqual(chamadas, 1)
     })
 })
