@@ -135,7 +135,11 @@ Ao contribuir, você concorda que sua contribuição será distribuída sob a me
 
 1. Num PR, atualize a versão no `package.json` (e no `package-lock.json`, com `npm install --package-lock-only`), as duas versões do `server.json` e uma seção nova no [CHANGELOG.md](CHANGELOG.md). O teste `tests/publicacao.test.ts` confere se tudo bate.
 2. Depois do merge, crie uma **release** no GitHub com a tag `vX.Y.Z` (a mesma versão) e as notas do CHANGELOG.
-3. O workflow [publish.yml](.github/workflows/publish.yml) testa, publica no npm por Trusted Publishing (sem token, com *provenance*) e atualiza o MCP Registry.
+3. O workflow [publish.yml](.github/workflows/publish.yml) testa e envia a versão para a **fila** do npm (*staged publishing*), por Trusted Publishing: sem token e com *provenance*. Ela ainda não fica pública.
+4. Aprove em npmjs.com → pacote → **Staged Packages** → **Approve**, com o 2FA. Só então a versão é publicada. Nenhum token do GitHub consegue aprovar: mesmo com o repositório comprometido, nada sai sem o 2FA do mantenedor.
+5. Rode o workflow [publish-registry.yml](.github/workflows/publish-registry.yml) (**Actions** → **publish-registry** → **Run workflow**) para atualizar o MCP Registry. Ele recusa rodar se a versão ainda não estiver aprovada no npm.
+
+O Trusted Publisher do npm fica configurado como *stage-only* (só `npm stage publish`): um `npm publish` direto vindo do GitHub é recusado.
 
 Versão maior (2.0.0) quando algo deixa de funcionar como antes: nome de tool, parâmetro ou formato dos dados salvos. Versão menor (1.1.0) para recursos novos, e correção (1.0.1) para o resto.
 
