@@ -31,10 +31,10 @@
  *   6.5  buscar por similaridade
  *   6.6  busca híbrida: junta a busca literal e esta (usada pela tool buscar_material)
  */
-import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import {
-    carregarExclusao, config, enabledTypes, listNoteFiles, readSearchableLines, resolveInsideNotes,
+    carregarExclusao, config, enabledTypes, gravarAtomico, listNoteFiles, readSearchableLines, resolveInsideNotes,
     searchNotes, semFrontmatter, typeOf, type Resultado, type Tipo,
 } from './service.ts';
 import { prepareUntrusted } from './safety.ts';
@@ -163,10 +163,10 @@ async function carregarIndice(): Promise<void> {
 
 // Grava o índice em DATA_DIR com permissão 600: ele contém trechos das suas
 // anotações, então só o seu usuário do sistema deve ler.
+// Gravação atômica (PASSO 3.10): outro processo nunca lê o índice pela metade.
 async function salvarIndice(): Promise<void> {
-    await mkdir(config.dataDir, { recursive: true, mode: 0o700 });
     const dados = { versao: INDEX_VERSION, modelo: `${MODEL}@${MODEL_REVISION}`, arquivos: Object.fromEntries(indice) };
-    await writeFile(join(config.dataDir, INDEX_FILE), JSON.stringify(dados), { mode: 0o600 });
+    await gravarAtomico(join(config.dataDir, INDEX_FILE), JSON.stringify(dados));
 }
 
 // Percorre os arquivos e processa só o que é novo ou mudou (data e tamanho).

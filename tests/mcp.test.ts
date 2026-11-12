@@ -471,6 +471,34 @@ describe('Study Notes MCP', () => {
         })
     })
 
+    // Dados salvos (PASSO 3.10): um JSON ilegível nunca pode virar lista vazia,
+    // senão a próxima gravação apagaria todas as dúvidas.
+    describe('dados salvos', () => {
+        it('should keep a corrupted duvidas.json intact and explain the error', async () => {
+            const dataDir = join(root, 'data-corrompido')
+            await mkdir(dataDir)
+            const corrompido = '[{"modulo": "modulo03", "texto": "dúvida antiga",'
+            await writeFile(join(dataDir, 'duvidas.json'), corrompido)
+            const corruptClient = await createTestClient(join(root, 'notas'), dataDir)
+            try {
+                const result = await callTool(corruptClient, 'registrar_duvida', { modulo: 'modulo03', texto: 'dúvida nova' })
+                assert.strictEqual(result.isError, true)
+                assert.match(result.content[0].text, /JSON inválido e não foi alterado/)
+                const { readFile } = await import('node:fs/promises')
+                assert.strictEqual(await readFile(join(dataDir, 'duvidas.json'), 'utf8'), corrompido)
+            } finally {
+                await corruptClient.close()
+            }
+        })
+
+        it('should not leave temporary files behind after saving', async () => {
+            await callTool(client, 'marcar_aula_concluida', { modulo: 'modulo01', aula: '01' })
+            const { readdir } = await import('node:fs/promises')
+            const arquivos = await readdir(join(root, 'data'))
+            assert.ok(!arquivos.some(nome => nome.endsWith('.tmp')), arquivos.join(', '))
+        })
+    })
+
     describe('segurança de arquivos', () => {
         it('should refuse a blocked file the same way whether it exists or not', async () => {
             // modulo03 tem um .env; modulo01 não. As duas respostas precisam ser iguais.
