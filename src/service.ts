@@ -26,7 +26,7 @@
  *
  * A busca semântica (opcional) fica separada, no PASSO 6 (semantic.ts).
  */
-import { readdir, readFile, writeFile, mkdir, realpath, stat } from 'node:fs/promises';
+import { readdir, readFile, writeFile, mkdir, realpath, rename, stat } from 'node:fs/promises';
 import { extname, join, relative, resolve, sep } from 'node:path';
 import { homedir } from 'node:os';
 // unpdf: extrai o texto de PDFs usando o pdf.js da Mozilla, sem dependências nativas.
@@ -531,19 +531,39 @@ export async function resolveInsideNotes(path: string): Promise<string> {
 // Persistência simples em arquivos JSON dentro de DATA_DIR (fora da pasta de
 // anotações, para não misturar seus dados com o material de estudo).
 
-// Lê um JSON; se ainda não existir (ou estiver corrompido), usa o valor padrão.
+// Lê um JSON; se ainda não existir, usa o valor padrão.
+// Um arquivo que existe mas está ilegível (editado à mão com erro, por exemplo)
+// NÃO vira lista vazia: a próxima gravação apagaria todas as dúvidas. A tool
+// devolve o erro e o arquivo fica intacto até o usuário corrigir.
 async function readJson<T>(name: string, fallback: T): Promise<T> {
+    const caminho = join(config.dataDir, name);
+    let texto: string;
     try {
-        return JSON.parse(await readFile(join(config.dataDir, name), 'utf8'));
+        texto = await readFile(caminho, 'utf8');
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return fallback;
+        throw error;
+    }
+    try {
+        return JSON.parse(texto);
     } catch {
-        return fallback;
+        throw new Error(`O arquivo ${name} em DATA_DIR está com o JSON inválido e não foi alterado. Corrija o erro de formato ou mova o arquivo para outro lugar para começar uma lista nova.`);
     }
 }
 
 // Permissões 700 (pasta) e 600 (arquivos): só o seu usuário do sistema lê e escreve.
-async function writeJson(name: string, data: unknown): Promise<void> {
+// Gravação atômica: escreve num arquivo temporário e renomeia. Com o servidor
+// aberto em mais de um cliente (VS Code, Claude Code...), outro processo nunca
+// lê um arquivo pela metade.
+export async function gravarAtomico(caminho: string, conteudo: string): Promise<void> {
     await mkdir(config.dataDir, { recursive: true, mode: 0o700 });
-    await writeFile(join(config.dataDir, name), JSON.stringify(data, null, 2), { mode: 0o600 });
+    const temporario = `${caminho}.${process.pid}.tmp`;
+    await writeFile(temporario, conteudo, { mode: 0o600 });
+    await rename(temporario, caminho);
+}
+
+async function writeJson(name: string, data: unknown): Promise<void> {
+    await gravarAtomico(join(config.dataDir, name), JSON.stringify(data, null, 2));
 }
 
 // Remove caracteres invisíveis (PASSO 4.1) ao gravar e ao ler: mesmo que alguém
