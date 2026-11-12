@@ -19,7 +19,8 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
+      # Sem scripts de instalação: pula o download do motor da busca por significado (onnxruntime-node), que este job não usa e que falha quando o servidor dele está fora do ar.
+      - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm test
 
@@ -37,7 +38,8 @@ jobs:
         with:
           node-version: 22.x
           cache: npm
-      - run: npm ci
+      # Sem scripts de instalação: pula o download do motor da busca por significado (onnxruntime-node), que este job não usa e que falha quando o servidor dele está fora do ar.
+      - run: npm ci --ignore-scripts
       - run: npm run build
       - run: npm test
         env:

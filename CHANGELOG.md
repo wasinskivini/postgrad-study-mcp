@@ -9,6 +9,7 @@ As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepa
 
 ### Publicação
 - Primeira versão publicada pelo GitHub Actions, com *provenance*: a página do npm mostra de qual commit e de qual workflow o pacote saiu.
+- O CI e a publicação instalam as dependências sem os scripts de instalação, exceto no teste da busca por significado: uma falha no servidor de download do `onnxruntime-node` não derruba mais uma release.
 
 ## [1.0.0] - 2026-11-12
 
