@@ -130,3 +130,12 @@ O mantenedor pode pedir ajustes nos comentários do PR. Faça novos commits na m
 ## Licença
 
 Ao contribuir, você concorda que sua contribuição será distribuída sob a mesma [licença ISC](LICENSE) do projeto.
+
+## Publicando uma versão (mantenedor)
+
+1. Num PR, atualize a versão no `package.json` (e no `package-lock.json`, com `npm install --package-lock-only`), as duas versões do `server.json` e uma seção nova no [CHANGELOG.md](CHANGELOG.md). O teste `tests/publicacao.test.ts` confere se tudo bate.
+2. Depois do merge, crie uma **release** no GitHub com a tag `vX.Y.Z` (a mesma versão) e as notas do CHANGELOG.
+3. O workflow [publish.yml](.github/workflows/publish.yml) testa, publica no npm por Trusted Publishing (sem token, com *provenance*) e atualiza o MCP Registry.
+
+Versão maior (2.0.0) quando algo deixa de funcionar como antes: nome de tool, parâmetro ou formato dos dados salvos. Versão menor (1.1.0) para recursos novos, e correção (1.0.1) para o resto.
+
