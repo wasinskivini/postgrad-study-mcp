@@ -1,6 +1,6 @@
 # study-notes-mcp
 
-[![test](https://github.com/wasinskivini/study-notes-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/wasinskivini/study-notes-mcp/actions/workflows/test.yml)
+[![npm](https://img.shields.io/npm/v/study-notes-mcp)](https://www.npmjs.com/package/study-notes-mcp) [![test](https://github.com/wasinskivini/study-notes-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/wasinskivini/study-notes-mcp/actions/workflows/test.yml)
 
 Servidor [MCP (Model Context Protocol)](https://modelcontextprotocol.io) que deixa o assistente de IA do seu editor (Copilot, Claude...) **consultar o seu material de estudo**: anotações, PDFs das aulas e código. Ele responde citando de onde tirou cada informação, registra dúvidas, acompanha o progresso e monta quizzes e planos de revisão.
 

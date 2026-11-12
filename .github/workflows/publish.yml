@@ -1,0 +1,82 @@
+# Publicação: roda quando uma release é publicada no GitHub (tag v1.2.3).
+#   1. confere se a tag bate com a versão do package.json e do server.json
+#   2. roda os testes e o teste do pacote
+#   3. publica no npm por Trusted Publishing (OIDC): sem token guardado, e o
+#      npm gera a "provenance" (prova de que o pacote saiu deste repositório)
+#   4. publica os metadados no MCP Registry, também por OIDC
+# Se a versão já estiver no npm (a 1.0.0 é publicada à mão, porque o npm só
+# deixa configurar o Trusted Publishing para um pacote que já existe), o passo
+# 3 é pulado e só o Registry é atualizado.
+name: publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # OIDC: npm (Trusted Publishing) e MCP Registry
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.1
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          registry-url: https://registry.npmjs.org
+
+      # Trusted Publishing exige npm 11.5.1 ou mais novo.
+      - run: npm install -g npm@11
+
+      - name: Confere a versão
+        run: |
+          versao="$(node -p "require('./package.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          servidor="$(node -p "require('./server.json').version")"
+          if [ "$tag" != "$versao" ] || [ "$servidor" != "$versao" ]; then
+            echo "Tag ($tag), package.json ($versao) e server.json ($servidor) precisam ter a mesma versão"
+            exit 1
+          fi
+          echo "VERSAO=$versao" >> "$GITHUB_ENV"
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:pack
+
+      - name: Publica no npm
+        run: |
+          if npm view "study-notes-mcp@$VERSAO" version > /dev/null 2>&1; then
+            echo "study-notes-mcp@$VERSAO já está no npm: pulando"
+          else
+            npm publish --access public
+          fi
+
+      # mcp-publisher numa versão fixa e com a assinatura conferida (Sigstore),
+      # como recomenda a documentação do MCP Registry.
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Baixa e confere o mcp-publisher
+        run: |
+          set -euo pipefail
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+
+      - name: Publica no MCP Registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
