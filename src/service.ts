@@ -284,12 +284,30 @@ export async function readSearchableLines(file: string): Promise<{ pagina?: numb
     return [{ lines: (await readFile(file, 'utf8')).split('\n') }];
 }
 
-// Módulos = subpastas de primeiro nível de NOTES_DIR (em ordem alfabética).
+// Pastas que têm pelo menos um arquivo que o servidor lê, em qualquer nível
+// abaixo delas. Uma pasta só com .json ou .sh não serve para buscar nem para
+// quiz, então não aparece como módulo nem nas sugestões.
+// Fica em cache por 10 s: o autocompletar chama isto a cada tecla digitada.
+const CACHE_PASTAS_MS = 10_000;
+let cachePastas: { quando: number; pastas: Set<string> } | undefined;
+export async function pastasComMaterial(): Promise<Set<string>> {
+    if (cachePastas && Date.now() - cachePastas.quando < CACHE_PASTAS_MS) return cachePastas.pastas;
+    const pastas = new Set<string>();
+    for (const file of await listNoteFiles(config.notesDir, enabledTypes())) {
+        const partes = relative(config.notesDir, file).split(sep);
+        for (let i = 1; i < partes.length; i++) pastas.add(partes.slice(0, i).join(sep));
+    }
+    cachePastas = { quando: Date.now(), pastas };
+    return pastas;
+}
+
+// Módulos = subpastas de primeiro nível de NOTES_DIR com material (em ordem alfabética).
 export async function listModules(): Promise<string[]> {
     const entries = await readdir(config.notesDir, { withFileTypes: true });
     const excluido = await carregarExclusao();
+    const comMaterial = await pastasComMaterial();
     return entries
-        .filter(entry => entry.isDirectory() && !isBlockedName(entry.name) && !excluido(entry.name, true))
+        .filter(entry => entry.isDirectory() && !isBlockedName(entry.name) && !excluido(entry.name, true) && comMaterial.has(entry.name))
         .map(entry => entry.name)
         .sort();
 }
@@ -303,10 +321,11 @@ const MAX_NIVEL_PASTAS = 3;
 // os módulos que estão dentro de uma pasta de primeiro nível.
 const NOME_DE_MODULO = /^(m[oó]dulo|module|aula|lesson|unidade|semana|week)/i;
 
-// Todas as pastas visíveis até MAX_NIVEL_PASTAS níveis, como caminhos
+// Todas as pastas com material até MAX_NIVEL_PASTAS níveis, como caminhos
 // relativos a NOTES_DIR (usado pelo autocompletar do gerar_quiz).
 export async function listarPastas(): Promise<string[]> {
     const excluido = await carregarExclusao();
+    const comMaterial = await pastasComMaterial();
     const pastas: string[] = [];
     async function descer(dir: string, nivel: number): Promise<void> {
         const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
@@ -314,7 +333,7 @@ export async function listarPastas(): Promise<string[]> {
             if (!entry.isDirectory() || isBlockedName(entry.name)) continue;
             const fullPath = join(dir, entry.name);
             const relativo = relative(config.notesDir, fullPath);
-            if (excluido(relativo, true)) continue;
+            if (excluido(relativo, true) || !comMaterial.has(relativo)) continue;
             pastas.push(relativo);
             if (nivel < MAX_NIVEL_PASTAS) await descer(fullPath, nivel + 1);
         }
@@ -327,9 +346,10 @@ export async function listarPastas(): Promise<string[]> {
 export async function listarSubmodulos(modulo: string): Promise<string[]> {
     const entries = await readdir(join(config.notesDir, modulo), { withFileTypes: true }).catch(() => []);
     const excluido = await carregarExclusao();
+    const comMaterial = await pastasComMaterial();
     return entries
         .filter(entry => entry.isDirectory() && NOME_DE_MODULO.test(entry.name) && !isBlockedName(entry.name)
-            && !excluido(join(modulo, entry.name), true))
+            && !excluido(join(modulo, entry.name), true) && comMaterial.has(join(modulo, entry.name)))
         .map(entry => entry.name)
         .sort();
 }
@@ -351,7 +371,13 @@ const MAX_PASTAS_ENCONTRADAS = 10;
 // As mais rasas vêm primeiro. Mais de uma = quem chamou pergunta ao usuário.
 export async function encontrarPastas(texto: string): Promise<string[]> {
     const exata = await validarPasta(texto).catch(() => undefined);
-    if (exata) return [exata];
+    if (exata) {
+        // A pasta existe, mas nada nela é lido: avisa já, em vez de o modelo buscar à toa.
+        if (!(await pastasComMaterial()).has(exata)) {
+            throw new Error(`A pasta "${exata}" não tem arquivos que o servidor lê (anotações .md e .txt, PDFs ou código). Escolha outra pasta.`);
+        }
+        return [exata];
+    }
     const alvo = normalizarNome(texto);
     if (!alvo) return [];
     const comCaminho = /[\\/]/.test(texto);
