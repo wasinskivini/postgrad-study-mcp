@@ -5,6 +5,7 @@
 | Sintoma | Causa e solução |
 |---|---|
 | `spawn npx ENOENT` ou "The command npx was not found" | O VS Code não achou o Node no PATH, o que é comum com **nvm**, que só configura o PATH no terminal. Use o caminho absoluto em `command` (veja com `which npx` ou `where npx`) ou abra o VS Code pelo terminal com `code .` |
+| No Windows, o servidor não sobe (`spawn npx ENOENT` ou nada no log) | Alguns clientes não iniciam o `npx.cmd` diretamente. Use `"command": "cmd"` e `"args": ["/c", "npx", "-y", "study-notes-mcp@latest"]`. Detalhes em [clientes testados](clientes.md#windows) |
 | Erro de sintaxe ou `ERR_UNKNOWN_FILE_EXTENSION ".ts"` | Node antigo. Atualize para 22.18 ou mais novo |
 | O servidor aparece, mas não acha nada | Confira o `NOTES_DIR`: caminho absoluto e pasta existente. Sem a [busca por significado](busca-por-significado.md) ligada, a busca é por **texto literal**: tente outra palavra. Confira também se o [`.studynotesignore`](configuracao.md#ignorando-arquivos-e-pastas-studynotesignore) não está escondendo a pasta |
 | "Language model unavailable" no chat | Problema do Copilot, não do servidor: atualize o VS Code e confira o login e o plano do Copilot |
