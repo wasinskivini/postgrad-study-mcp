@@ -30,4 +30,4 @@ Só o mantenedor vê o reporte. Você recebe uma resposta assim que possível; p
 
 ## Versões suportadas
 
-Apenas a versão mais recente da `main` recebe correções.
+Apenas a versão mais recente publicada no [npm](https://www.npmjs.com/package/study-notes-mcp) recebe correções. Quem usa `study-notes-mcp@latest` no `mcp.json` recebe a correção ao reiniciar o servidor; quem fixou uma versão precisa atualizá-la.
