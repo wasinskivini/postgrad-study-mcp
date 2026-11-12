@@ -472,6 +472,26 @@ describe('Study Notes MCP', () => {
     })
 
     describe('segurança de arquivos', () => {
+        it('should refuse a blocked file the same way whether it exists or not', async () => {
+            // modulo03 tem um .env; modulo01 não. As duas respostas precisam ser iguais.
+            for (const arquivo of ['modulo03/.env', 'modulo01/.env', 'modulo01/segredos.json']) {
+                const result = await callTool(client, 'ler_material', { arquivo })
+                assert.strictEqual(result.isError, true)
+                assert.match(result.content[0].text, /Arquivo não permitido/, arquivo)
+            }
+        })
+
+        it('should not reveal the absolute path of a missing file or module', async () => {
+            const arquivo = await callTool(client, 'ler_material', { arquivo: 'modulo01/nao-existe.md' })
+            assert.match(arquivo.content[0].text, /Arquivo não encontrado: modulo01\/nao-existe\.md/)
+            const modulo = await callTool(client, 'buscar_material', { consulta: 'mcp', modulo: 'modulo99' })
+            assert.match(modulo.content[0].text, /Não encontrado na pasta de anotações: modulo99/)
+            for (const result of [arquivo, modulo]) {
+                assert.strictEqual(result.isError, true)
+                assert.ok(!result.content[0].text.includes(root), 'a mensagem não pode trazer o caminho absoluto')
+            }
+        })
+
         const blocked = [
             ['outside the notes folder', '../fora.md', /fora da pasta/],
             ['.env files', 'modulo03/.env', /não permitido/],

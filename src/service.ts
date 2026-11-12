@@ -447,20 +447,31 @@ export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[])
 // ----------------------------------------------------------------------------
 // 3.7 — LEITURA (usada pela tool ler_material, PASSO 2.5)
 // ----------------------------------------------------------------------------
-// Ordem das checagens: caminho dentro da pasta (3.9) → nenhum trecho oculto ou
-// bloqueado → extensão permitida → é arquivo → tamanho → lê e protege (4.4).
+// Ordem das checagens: primeiro só pelo TEXTO do caminho, sem tocar no disco
+// (dentro da pasta, nenhum trecho oculto ou bloqueado, extensão permitida,
+// fora do .studynotesignore); depois o caminho real (3.9, symlinks) → é
+// arquivo → tamanho → lê e protege (4.4). Assim um arquivo bloqueado recebe
+// sempre a mesma recusa, exista ou não: perguntar por ".env" não revela se
+// há um .env na pasta.
 export async function readNote(path: string, paginas?: string): Promise<{ text: string; alertas: string[] }> {
-    const fullPath = await resolveInsideNotes(path);
+    const pedido = resolve(config.notesDir, path);
+    if (!isInside(config.notesDir, pedido)) throw new Error(`Caminho fora da pasta de anotações: ${path}`);
     // Confere CADA parte do caminho: "modulo/.oculta/nota.md" é bloqueado por
     // causa de ".oculta", mesmo que "nota.md" seja uma extensão permitida.
-    const segments = relative(config.notesDir, fullPath).split(sep);
+    const segments = relative(config.notesDir, pedido).split(sep);
     if (segments.some(isBlockedName) || !isAllowedFile(segments.at(-1)!)) {
         const extensions = enabledTypes().flatMap(tipo => FILE_TYPES[tipo]).join(', ');
         throw new Error(`Arquivo não permitido: ${path}. Só são lidos ${extensions} fora de pastas ocultas.`);
     }
-    if ((await carregarExclusao())(relative(config.notesDir, fullPath))) {
+    if ((await carregarExclusao())(relative(config.notesDir, pedido))) {
         throw new Error(`Arquivo ignorado pelo ${IGNORE_FILE}: ${path}`);
     }
+    // Só agora o disco: o caminho real (symlinks) também precisa ficar dentro.
+    // O erro do sistema traz o caminho absoluto (com o nome do seu usuário);
+    // ele não vai para o modelo, só "não encontrado".
+    const fullPath = await resolveInsideNotes(path).catch(error => {
+        throw error?.code === 'ENOENT' ? new Error(`Arquivo não encontrado: ${path}`) : error;
+    });
     const info = await stat(fullPath);
     if (!info.isFile()) throw new Error(`Não é um arquivo: ${path}`);
     if (typeOf(fullPath) === 'pdf') return prepareUntrusted(await readPdf(fullPath, paginas));
@@ -503,7 +514,11 @@ export async function resolveInsideNotes(path: string): Promise<string> {
     if (!isInside(config.notesDir, fullPath)) {
         throw new Error(`Caminho fora da pasta de anotações: ${path}`);
     }
-    const [realBase, realTarget] = await Promise.all([realpath(config.notesDir), realpath(fullPath)]);
+    // realpath falha se o caminho não existe; a mensagem do sistema traz o
+    // caminho absoluto, que não deve ir para o modelo.
+    const [realBase, realTarget] = await Promise.all([realpath(config.notesDir), realpath(fullPath)]).catch(error => {
+        throw error?.code === 'ENOENT' ? Object.assign(new Error(`Não encontrado na pasta de anotações: ${path}`), { code: 'ENOENT' }) : error;
+    });
     if (!isInside(realBase, realTarget)) {
         throw new Error(`Caminho fora da pasta de anotações: ${path}`);
     }
