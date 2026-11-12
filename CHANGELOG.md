@@ -25,6 +25,9 @@ Primeira versão publicada.
 - Recusa igual para arquivos bloqueados que existem ou não, e mensagens de erro sem caminhos absolutos.
 - Gravação atômica das dúvidas, do progresso e do índice, com novas tentativas no Windows; um arquivo ilegível nunca é sobrescrito.
 
+### Requisitos
+- Node.js 22.18 ou mais novo.
+
 ### Clientes testados
 - VS Code com GitHub Copilot, Claude Code e Codex. Detalhes em [docs/clientes.md](docs/clientes.md).
 
