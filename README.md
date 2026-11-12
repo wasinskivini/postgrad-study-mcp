@@ -23,7 +23,7 @@ Copilot:  Chunking divide documentos grandes em trechos menores antes de gerar
 
 ## Instalação (passo a passo)
 
-**1. Pré-requisitos:** **Node.js 22.18 ou mais novo** (confira com `node -v`) e o **VS Code** com o **GitHub Copilot** (o plano Free funciona), ou outro cliente MCP.
+**1. Pré-requisitos:** **Node.js 22.18 ou mais novo** (confira com `node -v`) e o **VS Code** com o **GitHub Copilot** (o plano Free funciona). Também funciona no [Claude Code, no Codex e em outros clientes MCP](https://github.com/wasinskivini/study-notes-mcp/blob/main/docs/clientes.md).
 
 **2. Escolha a pasta de estudos.** Ela vira o `NOTES_DIR`, e cada subpasta de primeiro nível vira um módulo. Não precisa reorganizar nada: aponte para onde você já guarda o material. Se um módulo estiver dentro de outra pasta, como num repositório de curso clonado, use o caminho completo (`repo-do-curso/modulo03-mcp`).
 
@@ -95,6 +95,7 @@ Os prompts prontos aparecem digitando `/` no chat: `/mcp.study-notes-mcp.gerar_q
 
 | Documento | O que tem |
 |---|---|
+| [Clientes testados](https://github.com/wasinskivini/study-notes-mcp/blob/main/docs/clientes.md) | Como configurar no Claude Code e no Codex, e o que funciona em cada cliente |
 | [Configuração](https://github.com/wasinskivini/study-notes-mcp/blob/main/docs/configuracao.md) | Variáveis, tipos de arquivo, `.studynotesignore`, notas do Obsidian, PDFs, usar em todos os projetos ou só num, atualizar |
 | [Busca por significado](https://github.com/wasinskivini/study-notes-mcp/blob/main/docs/busca-por-significado.md) | Como ligar, como funciona e quanto melhora a busca |
 | [Segurança e privacidade](https://github.com/wasinskivini/study-notes-mcp/blob/main/docs/seguranca-e-privacidade.md) | O que sai do seu computador, custos e as proteções contra vazamento e *prompt injection* |
