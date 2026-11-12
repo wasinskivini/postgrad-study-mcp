@@ -1,12 +1,15 @@
-# Publicação: roda quando uma release é publicada no GitHub (tag v1.2.3).
-#   1. confere se a tag bate com a versão do package.json e do server.json
-#   2. roda os testes e o teste do pacote
-#   3. publica no npm por Trusted Publishing (OIDC): sem token guardado, e o
-#      npm gera a "provenance" (prova de que o pacote saiu deste repositório)
-#   4. publica os metadados no MCP Registry, também por OIDC
-# Se a versão já estiver no npm (a 1.0.0 é publicada à mão, porque o npm só
-# deixa configurar o Trusted Publishing para um pacote que já existe), o passo
-# 3 é pulado e só o Registry é atualizado.
+# Publicação no npm, em duas etapas (staged publishing):
+#   1. quando uma release é publicada no GitHub (tag v1.2.3), este workflow
+#      confere a versão, roda os testes e envia a versão para a FILA do npm
+#      (npm stage publish). Ela ainda não fica pública.
+#   2. um mantenedor aprova a versão em npmjs.com → Staged Packages, com 2FA.
+#      Só então ela é publicada. Nenhum token do GitHub consegue aprovar: mesmo
+#      com o repositório comprometido, nada sai sem o 2FA do mantenedor.
+# Depois da aprovação, rode o workflow publish-registry (MCP Registry).
+#
+# Sem token guardado: o npm confia neste workflow por Trusted Publishing (OIDC),
+# configurado no npm como "stage-only", e gera a provenance (a prova de que o
+# pacote saiu deste repositório).
 name: publish
 
 on:
@@ -17,13 +20,11 @@ permissions:
   contents: read
 
 jobs:
-  publish:
+  stage:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # OIDC: npm (Trusted Publishing) e MCP Registry
-    env:
-      MCP_PUBLISHER_VERSION: v1.8.1
+      id-token: write # OIDC do Trusted Publishing
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -31,7 +32,7 @@ jobs:
           node-version: 24.x
           registry-url: https://registry.npmjs.org
 
-      # Trusted Publishing exige npm 11.5.1 ou mais novo.
+      # Staged publishing exige npm 11.15.0 ou mais novo.
       - run: npm install -g npm@11
 
       - name: Confere a versão
@@ -50,33 +51,14 @@ jobs:
       - run: npm test
       - run: npm run test:pack
 
-      - name: Publica no npm
-        run: |
-          if npm view "study-notes-mcp@$VERSAO" version > /dev/null 2>&1; then
-            echo "study-notes-mcp@$VERSAO já está no npm: pulando"
-          else
-            npm publish --access public
-          fi
+      - name: Envia para a fila do npm
+        run: npm stage publish --access public
 
-      # mcp-publisher numa versão fixa e com a assinatura conferida (Sigstore),
-      # como recomenda a documentação do MCP Registry.
-      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
-      - name: Baixa e confere o mcp-publisher
+      - name: Próximos passos
         run: |
-          set -euo pipefail
-          archive="mcp-publisher_linux_amd64.tar.gz"
-          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
-          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
-          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
-          cosign verify-blob \
-            --bundle "$archive.sigstore.json" \
-            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            "$archive"
-          tar xzf "$archive" mcp-publisher
-          rm -f "$archive" "$archive.sigstore.json"
-
-      - name: Publica no MCP Registry
-        run: |
-          ./mcp-publisher login github-oidc
-          ./mcp-publisher publish
+          {
+            echo "## study-notes-mcp@$VERSAO está na fila do npm"
+            echo
+            echo "1. Aprove em https://www.npmjs.com/package/study-notes-mcp → **Staged Packages** → **Approve** (pede o 2FA)."
+            echo "2. Depois, rode o workflow **publish-registry** (Actions → publish-registry → Run workflow) para atualizar o MCP Registry."
+          } >> "$GITHUB_STEP_SUMMARY"
