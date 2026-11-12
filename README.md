@@ -28,7 +28,7 @@ Copilot:  Chunking divide documentos grandes em trechos menores antes de gerar
 **2. Escolha a pasta de estudos.** Ela vira o `NOTES_DIR`, e cada subpasta de primeiro nível vira um módulo. Não precisa reorganizar nada: aponte para onde você já guarda o material. Se um módulo estiver dentro de outra pasta, como num repositório de curso clonado, use o caminho completo (`repo-do-curso/modulo03-mcp`).
 
 ```
-Pós IA/
+Estudos/
   modulo01-fundamentos/     ← suas anotações (.md, .txt)
   modulo03-mcp/             ← PDFs das aulas
   repo-do-curso/            ← código (.ts, .js, .py)
@@ -44,14 +44,14 @@ Pós IA/
       "command": "npx",
       "args": ["-y", "study-notes-mcp@latest"],
       "env": {
-        "NOTES_DIR": "/Users/seu-usuario/Documents/Pós IA"
+        "NOTES_DIR": "/Users/seu-usuario/Documents/Estudos"
       }
     }
   }
 }
 ```
 
-O caminho precisa ser **absoluto**. No Windows, use `/`: `"C:/Users/seu-usuario/Documents/Pos IA"`. Não precisa baixar nada: o `npx` busca o pacote no npm na primeira vez, o que leva alguns segundos.
+O caminho precisa ser **absoluto**. No Windows, use `/`: `"C:/Users/seu-usuario/Documents/Estudos"`. Não precisa baixar nada: o `npx` busca o pacote no npm na primeira vez, o que leva alguns segundos.
 
 **4. Inicie:** **MCP: List Servers** → `study-notes-mcp` → **Start Server**. Em **Show Output**, deve aparecer `Discovered 7 tools`.
 
@@ -102,8 +102,6 @@ Os prompts prontos aparecem digitando `/` no chat: `/mcp.study-notes-mcp.gerar_q
 | [Problemas comuns](https://github.com/wasinskivini/study-notes-mcp/blob/main/docs/problemas-comuns.md) | Sintomas e soluções |
 | [Entendendo o código](https://github.com/wasinskivini/study-notes-mcp/blob/main/docs/entendendo-o-codigo.md) | Estrutura, ordem de leitura e o caminho de uma busca, para quem quer aprender a construir um servidor MCP |
 | [Contribuindo](https://github.com/wasinskivini/study-notes-mcp/blob/main/CONTRIBUTING.md) | Rodar a partir do código-fonte, scripts, testes e pull requests |
-
-> 🎓 **Projeto educacional.** Criado durante a pós-graduação em Engenharia de Software com IA Aplicada para praticar a construção de servidores MCP e apoiar os estudos. Não é um produto oficial do curso nem da instituição, não tem garantia de funcionamento (veja a [licença](LICENSE)) e não substitui o material e as orientações dos professores.
 
 ## Licença
 

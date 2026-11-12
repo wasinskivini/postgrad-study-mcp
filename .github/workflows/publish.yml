@@ -46,7 +46,8 @@ jobs:
           fi
           echo "VERSAO=$versao" >> "$GITHUB_ENV"
 
-      - run: npm ci
+      # Sem scripts de instalação: pula o download do motor da busca por significado (onnxruntime-node), que este job não usa e que falha quando o servidor dele está fora do ar.
+      - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:pack

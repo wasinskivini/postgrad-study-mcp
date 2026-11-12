@@ -1,6 +1,6 @@
 {
   "name": "study-notes-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "mcpName": "io.github.wasinskivini/study-notes-mcp",
   "description": "Servidor MCP de estudos: busca nas suas anotações, PDFs e código com fonte citada, busca por significado local, dúvidas, progresso e quizzes",
   "main": "dist/index.js",

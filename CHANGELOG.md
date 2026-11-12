@@ -2,6 +2,15 @@
 
 As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/): a versão maior muda quando algo deixa de funcionar como antes (nome de tool, parâmetro, formato dos dados salvos).
 
+## [1.0.1] - 2026-11-12
+
+### Documentação
+- README sem o aviso de projeto educacional, e exemplos de pasta com um nome genérico (`Estudos`).
+
+### Publicação
+- Primeira versão publicada pelo GitHub Actions, com *provenance*: a página do npm mostra de qual commit e de qual workflow o pacote saiu.
+- O CI e a publicação instalam as dependências sem os scripts de instalação, exceto no teste da busca por significado: uma falha no servidor de download do `onnxruntime-node` não derruba mais uma release.
+
 ## [1.0.0] - 2026-11-12
 
 Primeira versão publicada.
@@ -31,4 +40,5 @@ Primeira versão publicada.
 ### Clientes testados
 - VS Code com GitHub Copilot, Claude Code e Codex. Detalhes em [docs/clientes.md](docs/clientes.md).
 
+[1.0.1]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.1
 [1.0.0]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.0

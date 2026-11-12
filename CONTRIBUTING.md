@@ -1,6 +1,6 @@
 # Contribuindo com o study-notes-mcp
 
-Obrigado pelo interesse! Este é um projeto educacional da pós, e contribuições de colegas são muito bem-vindas — de correções de texto a tools novas.
+Obrigado pelo interesse! Contribuições são muito bem-vindas — de correções de texto a tools novas.
 
 ## Formas de contribuir
 
