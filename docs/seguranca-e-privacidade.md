@@ -42,6 +42,7 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP. Por isso o s
 - Lista fechada de extensões: `.env`, `.json`, chaves (`.pem`, `.key`) e qualquer outra extensão nunca são lidos
 - Arquivos e pastas ocultos (`.env`, `.git`, `.oculta/`) e `node_modules`, `dist`, `build`, `coverage`, `venv` são ignorados
 - Caminhos com `../` e symlinks que apontam para fora de `NOTES_DIR` são bloqueados
+- Um arquivo bloqueado recebe sempre a mesma recusa, exista ou não: perguntar por `.env` não revela se há um `.env` na pasta. As mensagens de erro também não trazem o caminho absoluto, que inclui o nome do seu usuário no sistema
 - O que estiver no `.studynotesignore` não é buscado nem lido
 - Segredos que aparecem no código (chaves `sk-…`, `ghp_…`, AWS, Google, Slack, chaves privadas, `apiKey = "…"`, `senha: "…"`, credenciais em URLs) são trocados por `[REDACTED]`
 
