@@ -16,6 +16,11 @@ updates:
       # (--package=@huggingface/transformers@4.3.1, em docs/busca-por-significado.md).
       # Atualizar só aqui deixaria os dois fora de sincronia: essa troca é manual.
       - dependency-name: "@huggingface/transformers"
+      # A versão 2 do unpdf exige Node 24, e este projeto ainda aceita o Node 22
+      # (LTS até abril de 2027). O teste "should only depend on packages that
+      # support the minimum Node version" pega casos assim.
+      - dependency-name: "unpdf"
+        update-types: ["version-update:semver-major"]
 
   # As actions do CI (checkout, setup-node, cache) também envelhecem.
   - package-ecosystem: github-actions
