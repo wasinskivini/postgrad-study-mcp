@@ -19,7 +19,7 @@ A biblioteca de embeddings entra como um segundo pacote no `npx`, e a variável 
     "study-notes-mcp"
   ],
   "env": {
-    "NOTES_DIR": "/Users/seu-usuario/Documents/Pós IA",
+    "NOTES_DIR": "/Users/seu-usuario/Documents/Estudos",
     "SEMANTIC_SEARCH": "true"
   }
 }

@@ -13,7 +13,7 @@ O servidor segue o padrão MCP, então as **tools** funcionam igual em qualquer 
 
 Testado em novembro de 2026, com o VS Code e as extensões da época (Codex: extensão `openai.chatgpt` 26.1106, `codex-cli` 0.167). Clientes mudam rápido: se algo aqui estiver desatualizado, abra uma [issue](https://github.com/wasinskivini/study-notes-mcp/issues/new/choose).
 
-Os exemplos usam `"/Users/seu-usuario/Documents/Pós IA"` como `NOTES_DIR`: troque pelo caminho absoluto da sua pasta. Para ligar a [busca por significado](busca-por-significado.md), acrescente `SEMANTIC_SEARCH=true` e o segundo pacote, como mostrado naquele documento.
+Os exemplos usam `"/Users/seu-usuario/Documents/Estudos"` como `NOTES_DIR`: troque pelo caminho absoluto da sua pasta. Para ligar a [busca por significado](busca-por-significado.md), acrescente `SEMANTIC_SEARCH=true` e o segundo pacote, como mostrado naquele documento.
 
 ## VS Code + GitHub Copilot
 
@@ -29,7 +29,7 @@ No terminal:
 
 ```bash
 claude mcp add study-notes-mcp --scope user \
-  -e NOTES_DIR="/Users/seu-usuario/Documents/Pós IA" \
+  -e NOTES_DIR="/Users/seu-usuario/Documents/Estudos" \
   -- npx -y study-notes-mcp@latest
 ```
 
@@ -45,7 +45,7 @@ No arquivo `~/.codex/config.toml` (crie se não existir):
 [mcp_servers.study-notes-mcp]
 command = "npx"
 args = ["-y", "study-notes-mcp@latest"]
-env = { NOTES_DIR = "/Users/seu-usuario/Documents/Pós IA" }
+env = { NOTES_DIR = "/Users/seu-usuario/Documents/Estudos" }
 # Na primeira vez o npx baixa o pacote, o que pode passar do limite padrão.
 startup_timeout_sec = 60
 ```
