@@ -48,13 +48,17 @@ import { prepareUntrusted, redactSecrets } from './safety.ts';
 // versão nova (ou maliciosa) no Hugging Face, ela não é baixada sem querer.
 const MODEL = 'Xenova/multilingual-e5-small';
 const MODEL_REVISION = '761b726dd34fb83930e26aab4e9ac3899aa1fa78';
-// Muda quando o formato do índice ou o modelo mudam: o índice antigo é refeito.
-const INDEX_VERSION = 1;
+// Muda quando o formato do índice, o modelo ou o corte em trechos mudam: o
+// índice antigo é refeito. 2: trechos cortados nos títulos Markdown (1.2.0).
+const INDEX_VERSION = 2;
 const INDEX_FILE = 'indice-semantico.json';
 export const SEMANTIC_TYPES: Tipo[] = ['anotacoes', 'pdf'];
 // ~800 caracteres por trecho: grande o bastante para ter contexto, pequeno o
 // bastante para o vetor representar um assunto só.
 const CHUNK_CHARS = 800;
+// Uma seção mais curta que isso se junta à seguinte, em vez de virar um trecho
+// minúsculo (medido: 100 dá o mesmo acerto com mais trechos; 400 piora).
+const MIN_CHUNK_CHARS = 200;
 const BATCH_SIZE = 16;
 const MAX_SEMANTIC_RESULTS = 8;
 const MAX_SEMANTIC_PER_FILE = 2;
@@ -104,8 +108,9 @@ function loadEmbedder(): Promise<Embedder> {
 // ----------------------------------------------------------------------------
 // 6.3 — DIVIDIR ARQUIVOS EM TRECHOS ("chunking")
 // ----------------------------------------------------------------------------
-// Junta linhas seguidas até ~CHUNK_CHARS caracteres. Cada trecho guarda a linha
-// onde começa (e a página, em PDFs) para a fonte poder ser citada.
+// Junta linhas seguidas até ~CHUNK_CHARS caracteres, começando um trecho novo
+// em cada título Markdown. Cada trecho guarda a linha onde começa (e a página,
+// em PDFs) para a fonte poder ser citada.
 // Exportada para os testes (não depende do modelo).
 export function dividirEmTrechos(sections: { pagina?: number; lines: string[] }[]): Omit<Trecho, 'alertas'>[] {
     const trechos: Omit<Trecho, 'alertas'>[] = [];
@@ -114,6 +119,7 @@ export function dividirEmTrechos(sections: { pagina?: number; lines: string[] }[
         // Tamanho de atual.join('\n'), somado aos poucos em vez de recalculado a cada linha.
         let tamanho = 0;
         let inicio = 1;
+        let emBlocoDeCodigo = false;
         const fechar = () => {
             const texto = atual.join('\n').trim();
             // Trechos quase vazios (só "---" ou espaços) não ajudam a busca.
@@ -122,11 +128,10 @@ export function dividirEmTrechos(sections: { pagina?: number; lines: string[] }[
             tamanho = 0;
         };
         for (const [index, line] of lines.entries()) {
+            if (/^\s*(```|~~~)/.test(line)) emBlocoDeCodigo = !emBlocoDeCodigo;
             // Uma linha maior que um trecho (um parágrafo inteiro do Obsidian)
             // vira vários trechos. Sem isso, o modelo de embeddings, que lê no
             // máximo ~512 tokens, ignoraria em silêncio o resto do parágrafo.
-            // As outras linhas são agrupadas como sempre: os trechos delas não
-            // mudam, e os índices já salvos continuam valendo.
             if (line.length > CHUNK_CHARS) {
                 fechar();
                 for (const pedaco of partirLinha(line)) {
@@ -136,6 +141,12 @@ export function dividirEmTrechos(sections: { pagina?: number; lines: string[] }[
                 }
                 continue;
             }
+            // Um título Markdown começa trecho novo, para cada trecho falar de um
+            // assunto só: sem isso, 71% dos trechos de um material de curso real
+            // misturavam duas seções, e o vetor deles ficava uma média dos dois
+            // assuntos. Seção curta demais se junta à seguinte. Dentro de bloco
+            // de código, "# comentário" não é título.
+            if (!emBlocoDeCodigo && /^#{1,6}\s/.test(line) && tamanho >= MIN_CHUNK_CHARS) fechar();
             if (!atual.length) inicio = index + 1;
             tamanho += (atual.length ? 1 : 0) + line.length;
             atual.push(line);
