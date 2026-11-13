@@ -81,6 +81,15 @@ async function createNotesDir(root: string) {
         'Links para arquivos bloqueados não são resolvidos: [[.env]].',
     ].join('\n'))
 
+    // Uma linha longa (parágrafo do Obsidian) com o termo no fim, e uma chave
+    // de API logo antes dele, onde a janela do trecho começa.
+    await writeFile(join(notesDir, 'modulo01', 'linha-longa.md'), [
+        'Lorem ipsum '.repeat(45) + 'o termo TERMOLONGE aparece so aqui no fim',
+        // A janela pega os últimos 200 caracteres: o corte cai 12 caracteres
+        // dentro da chave, depois do "sk-" que a identifica como segredo.
+        'texto '.repeat(40) + 'sk-FIMDACHAVEABCDEFGHIJKLMNOPQRSTUVWXYZ0123 ' + 'x'.repeat(157) + ' CHAVEPERTO',
+    ].join('\n'))
+
     // Busca literal: limite por arquivo e anotações antes do código.
     await writeFile(join(notesDir, 'modulo01', 'repetido.md'), Array.from({ length: 6 }, (_, i) => `repeticao ${i + 1}`).join('\n'))
     await writeFile(join(notesDir, 'modulo01', 'a-codigo.ts'), '// prioridade: código')
@@ -176,6 +185,18 @@ describe('Study Notes MCP', () => {
         it('should return at most 3 results per file', async () => {
             const result = await callTool(client, 'buscar_material', { consulta: 'repeticao' })
             assert.strictEqual(result.structuredContent.resultados.length, 3)
+        })
+
+        it('should return the part of a long line where the term is', async () => {
+            const result = await callTool(client, 'buscar_material', { consulta: 'termolonge' })
+            assert.ok(result.structuredContent.resultados[0].trecho.includes('TERMOLONGE'))
+        })
+
+        it('should mask a secret near the snippet cut instead of leaking part of it', async () => {
+            const result = await callTool(client, 'buscar_material', { consulta: 'chaveperto' })
+            const trecho: string = result.structuredContent.resultados[0].trecho
+            assert.ok(trecho.includes('CHAVEPERTO'))
+            assert.ok(!trecho.includes('CHAVEABCDEF') && !trecho.includes('XYZ0123'), trecho)
         })
 
         it('should list notes before code', async () => {
