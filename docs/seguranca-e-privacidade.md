@@ -44,7 +44,8 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP. Por isso o s
 - Caminhos com `../` e symlinks que apontam para fora de `NOTES_DIR` são bloqueados
 - Um arquivo bloqueado recebe sempre a mesma recusa, exista ou não: perguntar por `.env` não revela se há um `.env` na pasta. As mensagens de erro também não trazem o caminho absoluto, que inclui o nome do seu usuário no sistema
 - O que estiver no `.studynotesignore` não é buscado nem lido
-- Segredos que aparecem no código (chaves `sk-…`, `ghp_…`, AWS, Google, Slack, chaves privadas, `apiKey = "…"`, `senha: "…"`, credenciais em URLs) são trocados por `[REDACTED]`
+- Segredos que aparecem no material (chaves `sk-…`, `ghp_…`, `hf_…`, AWS, Google, Slack, JWT e `Bearer`, chaves privadas, `apiKey = "…"`, `senha: "…"`, credenciais em URLs) são trocados por `[REDACTED]`. Também sem aspas, como num `.env` colado numa nota (`DB_TOKEN=…`) ou num frontmatter (`password: …`), quando o valor tem cara de segredo: textos de exemplo (`your_api_key`, `sua_chave_aqui`) e referências no código (`config.senha`, `process.env.X`) ficam como estão
+- Quando algo é mascarado, a resposta traz uma linha 🔒 separada do alerta de injeção, para o assistente poder avisar você de que há algo com cara de credencial nas suas anotações (pode ser só um exemplo de documentação)
 
 **Prompt injection.** Não existe proteção 100%, então são várias camadas:
 - O conteúdo dos arquivos volta delimitado por `<dados_nao_confiaveis id="…">`, com um id aleatório a cada chamada: o arquivo não consegue "fechar" o bloco e escrever fora dele

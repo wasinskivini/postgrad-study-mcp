@@ -112,7 +112,8 @@ export type Duvida = { modulo: string; texto: string; criadaEm: string; resolvid
 // marcadas como resolvidas, então o número de cada uma não muda.
 export type DuvidaNumerada = Duvida & { numero: number };
 export type Progresso = Record<string, string[]>;
-export type Resultado = { arquivo: string; linha: number; pagina?: number; trecho: string; alertas: string[] };
+// segredos: quantos foram mascarados no trecho (PASSO 4.2), para o aviso 🔒.
+export type Resultado = { arquivo: string; linha: number; pagina?: number; trecho: string; alertas: string[]; segredos?: number };
 
 // ----------------------------------------------------------------------------
 // 3.3 — FILTROS
@@ -558,8 +559,8 @@ export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[])
                 // 4.4) e só depois recorta o trecho em volta do termo. Nessa
                 // ordem, um segredo perto do corte é mascarado por inteiro, em
                 // vez de vazar pela metade sem o prefixo (sk-...) que o identifica.
-                const { text, alertas } = prepareUntrusted(line.trim());
-                results.push({ arquivo: relative(config.notesDir, file), linha: index + 1, pagina, trecho: janela(text, needle), alertas });
+                const { text, alertas, segredos } = prepareUntrusted(line.trim());
+                results.push({ arquivo: relative(config.notesDir, file), linha: index + 1, pagina, trecho: janela(text, needle), alertas, segredos });
                 // Passo f): para no limite geral, para não mandar texto demais ao
                 // modelo, e no limite por arquivo, para variar as fontes.
                 if (results.length >= MAX_RESULTS) return results;
@@ -579,7 +580,7 @@ export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[])
 // arquivo → tamanho → lê e protege (4.4). Assim um arquivo bloqueado recebe
 // sempre a mesma recusa, exista ou não: perguntar por ".env" não revela se
 // há um .env na pasta.
-export async function readNote(path: string, paginas?: string): Promise<{ text: string; alertas: string[] }> {
+export async function readNote(path: string, paginas?: string): Promise<{ text: string; alertas: string[]; segredos: number }> {
     const pedido = resolve(config.notesDir, path);
     if (!isInside(config.notesDir, pedido)) throw new Error(`Caminho fora da pasta de anotações: ${path}`);
     // Confere CADA parte do caminho: "modulo/.oculta/nota.md" é bloqueado por

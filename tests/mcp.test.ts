@@ -93,6 +93,12 @@ async function createNotesDir(root: string) {
     // Acentos: anotações em português, buscas digitadas sem acento.
     await writeFile(join(notesDir, 'modulo01', 'acentos.md'), 'A função de ativação decide se o neurônio dispara.\n')
 
+    // Credenciais sem aspas numa nota, sem nenhuma frase de injeção.
+    await writeFile(join(notesDir, 'modulo01', 'credenciais.md'), [
+        '---', 'password: hunter2secreto', '---',
+        'Para configurar o banco: DB_TOKEN=abcdef0123456789abcdef',
+    ].join('\n'))
+
     // Busca literal: limite por arquivo e anotações antes do código.
     await writeFile(join(notesDir, 'modulo01', 'repetido.md'), Array.from({ length: 6 }, (_, i) => `repeticao ${i + 1}`).join('\n'))
     await writeFile(join(notesDir, 'modulo01', 'a-codigo.ts'), '// prioridade: código')
@@ -219,6 +225,17 @@ describe('Study Notes MCP', () => {
                 assert.ok(achado, `"${consulta}" não achou a nota`)
                 // O trecho mantém o texto original, com os acentos.
                 assert.ok(achado.trecho.includes('função de ativação'), achado.trecho)
+            }
+        })
+
+        it('should mask unquoted credentials and say so, apart from the injection alert', async () => {
+            const lido = (await callTool(client, 'ler_material', { arquivo: 'modulo01/credenciais.md' })).content[0].text
+            const busca = (await callTool(client, 'buscar_material', { consulta: 'DB_TOKEN' })).content[0].text
+            for (const texto of [lido, busca]) {
+                assert.ok(!texto.includes('hunter2secreto') && !texto.includes('abcdef0123456789abcdef'), texto)
+                assert.match(texto, /🔒 \d+ valor\(es\) com cara de credencial/)
+                // Credencial não é ataque: não pode virar alerta de prompt injection.
+                assert.doesNotMatch(texto, /ALERTA/)
             }
         })
 
