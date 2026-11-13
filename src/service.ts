@@ -453,13 +453,40 @@ export async function validarPasta(caminho: string): Promise<string> {
     return relativo;
 }
 
+// Forma de comparação da busca literal: minúsculas e sem acentos, para que
+// "funcao" ache "função" (quem digita no chat raramente acentua). Linhas só com
+// ASCII (a maioria, inclusive todo o código) pulam a normalização, que é a
+// parte cara. Exportada para a janela e os testes usarem a mesma regra.
+const NAO_ASCII = /[^\x00-\x7f]/;
+export function paraComparar(texto: string): string {
+    const minusculo = texto.toLowerCase();
+    return NAO_ASCII.test(minusculo) ? minusculo.normalize('NFD').replace(/\p{M}/gu, '') : minusculo;
+}
+
+// Posição do termo (já em paraComparar) no texto ORIGINAL. A comparação é feita
+// sem acentos, mas o trecho devolvido mantém os acentos: cada caractere do
+// original vira 0, 1 ou mais caracteres comparáveis, e o mapa guarda de qual
+// posição do original veio cada um.
+function posicaoNoOriginal(texto: string, termo: string): number {
+    if (!NAO_ASCII.test(texto)) return texto.toLowerCase().indexOf(termo);
+    let comparavel = '';
+    const origem: number[] = [];
+    for (let i = 0; i < texto.length; ) {
+        const caractere = String.fromCodePoint(texto.codePointAt(i)!);
+        for (const unidade of paraComparar(caractere)) { comparavel += unidade; origem.push(i); }
+        i += caractere.length;
+    }
+    const posicao = comparavel.indexOf(termo);
+    return posicao < 0 ? -1 : origem[posicao];
+}
+
 // Até 200 caracteres por trecho, centrados no termo. Numa linha longa (um
 // parágrafo do Obsidian costuma ser uma linha só), os primeiros 200 caracteres
 // podem não conter o que foi buscado. "…" marca onde o trecho foi cortado.
 const JANELA = 200;
 export function janela(linha: string, termo: string): string {
     if (linha.length <= JANELA) return linha;
-    const posicao = linha.toLowerCase().indexOf(termo);
+    const posicao = posicaoNoOriginal(linha, termo);
     let inicio = posicao < 0 ? 0 : Math.max(0, Math.min(posicao - Math.floor((JANELA - termo.length) / 2), linha.length - JANELA));
     let fim = Math.min(linha.length, inicio + JANELA);
     // Não corta um emoji (ou outro caractere de 2 unidades) ao meio.
@@ -471,7 +498,8 @@ export function janela(linha: string, termo: string): string {
 // ----------------------------------------------------------------------------
 // 3.6 — BUSCA (usada pela tool buscar_material, PASSO 2.4)
 // ----------------------------------------------------------------------------
-// Busca LITERAL: procura o termo exato, sem diferenciar maiúsculas/minúsculas.
+// Busca LITERAL: procura o termo exato, sem diferenciar maiúsculas/minúsculas
+// nem acentos ("funcao" acha "função" e vice-versa).
 // Não entende sinônimos ("vetores" não acha "embeddings") — para isso existe a
 // busca semântica opcional (PASSO 6).
 export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[]): Promise<Resultado[]> {
@@ -481,7 +509,7 @@ export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[])
     if (modulo && !(await stat(baseDir)).isDirectory()) {
         throw new Error(`"${modulo}" é um arquivo, não um módulo. Use uma pasta, como as de listar_modulos; para ler o arquivo, use ler_material.`);
     }
-    const needle = term.toLowerCase();
+    const needle = paraComparar(term);
     const results: Resultado[] = [];
 
     // Passo b): ordena os arquivos por tipo (anotações → PDFs → código). O sort
@@ -497,7 +525,7 @@ export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[])
         // Passo d): ...para cada linha (de cada página, se for PDF)...
         lines: for (const { pagina, lines } of sections) {
             for (const [index, line] of lines.entries()) {
-                if (!line.toLowerCase().includes(needle)) continue;
+                if (!paraComparar(line).includes(needle)) continue;
                 // Passo e): achou! Passa a linha INTEIRA pelas proteções (PASSO
                 // 4.4) e só depois recorta o trecho em volta do termo. Nessa
                 // ordem, um segredo perto do corte é mascarado por inteiro, em

@@ -90,6 +90,9 @@ async function createNotesDir(root: string) {
         'texto '.repeat(40) + 'sk-FIMDACHAVEABCDEFGHIJKLMNOPQRSTUVWXYZ0123 ' + 'x'.repeat(157) + ' CHAVEPERTO',
     ].join('\n'))
 
+    // Acentos: anotações em português, buscas digitadas sem acento.
+    await writeFile(join(notesDir, 'modulo01', 'acentos.md'), 'A função de ativação decide se o neurônio dispara.\n')
+
     // Busca literal: limite por arquivo e anotações antes do código.
     await writeFile(join(notesDir, 'modulo01', 'repetido.md'), Array.from({ length: 6 }, (_, i) => `repeticao ${i + 1}`).join('\n'))
     await writeFile(join(notesDir, 'modulo01', 'a-codigo.ts'), '// prioridade: código')
@@ -207,6 +210,16 @@ describe('Study Notes MCP', () => {
             const trecho: string = result.structuredContent.resultados[0].trecho
             assert.ok(trecho.includes('CHAVEPERTO'))
             assert.ok(!trecho.includes('CHAVEABCDEF') && !trecho.includes('XYZ0123'), trecho)
+        })
+
+        it('should find accented words when the search has no accents, and the other way round', async () => {
+            for (const consulta of ['funcao de ativacao', 'FUNÇÃO DE ATIVAÇÃO', 'neuronio']) {
+                const result = await callTool(client, 'buscar_material', { consulta })
+                const achado = result.structuredContent.resultados.find((r: { arquivo: string }) => r.arquivo === join('modulo01', 'acentos.md'))
+                assert.ok(achado, `"${consulta}" não achou a nota`)
+                // O trecho mantém o texto original, com os acentos.
+                assert.ok(achado.trecho.includes('função de ativação'), achado.trecho)
+            }
         })
 
         it('should list notes before code', async () => {
