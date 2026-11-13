@@ -111,21 +111,56 @@ export function dividirEmTrechos(sections: { pagina?: number; lines: string[] }[
     const trechos: Omit<Trecho, 'alertas'>[] = [];
     for (const { pagina, lines } of sections) {
         let atual: string[] = [];
+        // Tamanho de atual.join('\n'), somado aos poucos em vez de recalculado a cada linha.
+        let tamanho = 0;
         let inicio = 1;
         const fechar = () => {
             const texto = atual.join('\n').trim();
             // Trechos quase vazios (só "---" ou espaços) não ajudam a busca.
             if (texto.replace(/\s/g, '').length >= 20) trechos.push({ linha: inicio, pagina, texto });
             atual = [];
+            tamanho = 0;
         };
         for (const [index, line] of lines.entries()) {
+            // Uma linha maior que um trecho (um parágrafo inteiro do Obsidian)
+            // vira vários trechos. Sem isso, o modelo de embeddings, que lê no
+            // máximo ~512 tokens, ignoraria em silêncio o resto do parágrafo.
+            // As outras linhas são agrupadas como sempre: os trechos delas não
+            // mudam, e os índices já salvos continuam valendo.
+            if (line.length > CHUNK_CHARS) {
+                fechar();
+                for (const pedaco of partirLinha(line)) {
+                    inicio = index + 1;
+                    atual = [pedaco];
+                    fechar();
+                }
+                continue;
+            }
             if (!atual.length) inicio = index + 1;
+            tamanho += (atual.length ? 1 : 0) + line.length;
             atual.push(line);
-            if (atual.join('\n').length >= CHUNK_CHARS) fechar();
+            if (tamanho >= CHUNK_CHARS) fechar();
         }
         fechar();
     }
     return trechos;
+}
+
+// Corta uma linha longa em pedaços de até CHUNK_CHARS, de preferência no fim de
+// uma frase; senão, no último espaço; e só no último caso no meio de uma palavra.
+function partirLinha(line: string): string[] {
+    const pedacos: string[] = [];
+    let resto = line;
+    while (resto.length > CHUNK_CHARS) {
+        const janela = resto.slice(0, CHUNK_CHARS);
+        const fimDeFrase = Math.max(janela.lastIndexOf('. '), janela.lastIndexOf('? '), janela.lastIndexOf('! '));
+        let corte = fimDeFrase >= CHUNK_CHARS / 2 ? fimDeFrase + 1 : janela.lastIndexOf(' ');
+        if (corte < CHUNK_CHARS / 2) corte = CHUNK_CHARS;
+        pedacos.push(resto.slice(0, corte));
+        resto = resto.slice(corte).trimStart();
+    }
+    if (resto) pedacos.push(resto);
+    return pedacos;
 }
 
 // ----------------------------------------------------------------------------
@@ -346,6 +381,9 @@ export function fundir(literais: Resultado[], semanticos: ResultadoSemantico[]):
     semanticos.forEach((r, i) => {
         const chave = `${lugar(r)}|${r.linha}`;
         const existente = itens.get(chave);
+        // Dois pedaços da mesma linha longa têm a mesma chave: o primeiro (mais
+        // bem colocado) fica, e o segundo não é "achado pelas duas buscas".
+        if (existente?.resultado.origem === 'significado') return;
         if (existente) {
             existente.resultado.origem = 'ambas';
             existente.resultado.similaridade = r.similaridade;
