@@ -71,6 +71,6 @@ describe('pacote do npm', () => {
             cwd: root,
         }))
         const { tools } = await client.listTools()
-        assert.strictEqual(tools.length, 7)
+        assert.strictEqual(tools.length, 8)
     })
 })
