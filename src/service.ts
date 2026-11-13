@@ -605,12 +605,18 @@ export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[])
         const sections = await readSearchableLines(file).catch(() => []);
         const linhas: Achado[] = [];
         let ocorrencias = 0;
+        // Título só existe em Markdown, e fora de bloco de código: em Python ou
+        // num bloco ```bash, "# comentário" não é título.
+        const markdown = extname(file).toLowerCase() === '.md';
         for (const { pagina, lines } of sections) {
+            let emBlocoDeCodigo = false;
             for (const [index, line] of lines.entries()) {
+                if (markdown && /^\s*(```|~~~)/.test(line)) emBlocoDeCodigo = !emBlocoDeCodigo;
                 const comparavel = paraComparar(line);
                 if (!comparavel.includes(needle)) continue;
                 ocorrencias++;
-                linhas.push({ line, linha: index + 1, pagina, pontos: pontosDaLinha(line, comparavel, needle) });
+                const titulo = markdown && !emBlocoDeCodigo && /^#{1,6}\s/.test(line);
+                linhas.push({ line, linha: index + 1, pagina, pontos: pontosDaLinha(titulo, comparavel, needle) });
                 // Mantém só as 3 melhores (empate: a que vem antes no arquivo).
                 if (linhas.length > MAX_RESULTS_PER_FILE) {
                     linhas.sort((a, b) => b.pontos - a.pontos);
@@ -669,12 +675,13 @@ const PESO_TIPO: Record<Tipo, number> = { anotacoes: 2, pdf: 1, codigo: 0 };
 // de vezes passava na frente da anotação sobre o assunto.
 const TETO_REPETICOES = 4;
 
-// Pontos de uma linha: 1 por ter o termo, mais se for título Markdown (# ...)
+// Pontos de uma linha: 1 por ter o termo, mais se for título Markdown (# ...,
+// decidido em searchNotes)
 // e se o termo aparecer como palavra inteira ("git" em "git push", e não em
 // "digitar"). Letras acentuadas e números contam como parte da palavra.
-function pontosDaLinha(line: string, comparavel: string, needle: string): number {
+function pontosDaLinha(titulo: boolean, comparavel: string, needle: string): number {
     let pontos = 1;
-    if (/^\s*#{1,6}\s/.test(line)) pontos += PESO_TITULO;
+    if (titulo) pontos += PESO_TITULO;
     const letra = /[\p{L}\p{N}_]/u;
     for (let i = comparavel.indexOf(needle); i !== -1; i = comparavel.indexOf(needle, i + 1)) {
         if (!letra.test(comparavel[i - 1] ?? '') && !letra.test(comparavel[i + needle.length] ?? '')) {

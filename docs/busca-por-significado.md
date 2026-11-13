@@ -48,8 +48,9 @@ A junção usa *Reciprocal Rank Fusion*: cada busca dá a cada resultado a nota 
 ## Quanto isso melhora
 
 Medido em dois lugares:
-- **No material do autor** (~1.900 arquivos), para 10 nomes exatos: dos 22 arquivos que a busca literal encontra, a semântica sozinha traz 8 e a híbrida traz 15. Esse material é privado e não está no repositório.
-- **No corpus de teste do repositório** (12 arquivos, 20 perguntas, rodando `npm run test:semantic`): a literal acerta o arquivo em 1º lugar em 6 de 20 perguntas, e a semântica e a híbrida em 18 de 20. Com tão poucos arquivos, a híbrida só empata com a semântica. O corpus serve para detectar regressões, não para provar ganho.
+- **No material do autor** (~1.900 arquivos, medido na 1.0), para 10 nomes exatos: dos 22 arquivos que a busca literal encontra, a semântica sozinha traz 8 e a híbrida traz 15. Esse material é privado e não está no repositório.
+- **No corpus de teste do repositório** (12 arquivos, 25 perguntas, rodando `npm run test:semantic`): no 1º lugar, a literal acerta 11 de 25, e a semântica e a híbrida 22 de 25; entre os 5 primeiros, a semântica e a híbrida acertam todas. Cinco perguntas são termos que aparecem em vários arquivos, onde conta a ordem da literal. O corpus serve para detectar regressões, não para provar ganho.
+- **Em notas longas, com várias seções** (`tests/secoes.model.ts`, 18 perguntas escritas com outras palavras): o 1º trecho começa na seção certa em 13 de 18. Com o corte antigo, que ignorava os títulos, era 1 de 18.
 
 ## Custos e limites
 
