@@ -2,7 +2,9 @@
 
 As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/): a versão maior muda quando algo deixa de funcionar como antes (nome de tool, parâmetro, formato dos dados salvos).
 
-## [Não publicado]
+## [1.1.0] - 2026-11-13
+
+Melhorias da revisão de código externa: busca, segurança e uma tool nova. Cada uma foi medida num material de curso real antes do merge.
 
 ### Adicionado
 - Mais segredos mascarados: valores sem aspas (`.env` colado numa nota, frontmatter YAML), JWT, `Bearer`, `x-api-key` e tokens do Hugging Face. Textos de exemplo e referências no código ficam como estão (medido num material real: sem esse filtro, todos os casos novos eram falsos).
@@ -10,6 +12,7 @@ As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepa
 - Tool `listar_arquivos`: os arquivos de um módulo, com tipo e tamanho (até 100, com filtro por tipo). O `gerar_quiz` passa a listar o módulo antes de ler, em vez de depender de termos de busca adivinhados.
 
 ### Alterado
+- Mais variações de *prompt injection* geram alerta: palavras entre "ignore" e "anteriores", "desconsidere o que foi dito antes", pedidos do prompt de sistema, ordens para chamar uma tool do servidor e para expor o `.env`. Medido num material de curso real: os alertas passaram de 4 para 8 linhas, todas com frases de ataque de verdade, e dúvidas legítimas como "posso ignorar o aviso acima?" continuam aceitas.
 - A busca por texto exato não diferencia mais acentos: `funcao` acha "função", e `ativação` acha também onde está escrito "ativacao". O trecho devolvido mantém os acentos originais.
 
 ## [1.0.2] - 2026-11-13
@@ -68,6 +71,7 @@ Primeira versão publicada.
 ### Clientes testados
 - VS Code com GitHub Copilot, Claude Code e Codex. Detalhes em [docs/clientes.md](docs/clientes.md).
 
+[1.1.0]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.1.0
 [1.0.2]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.2
 [1.0.1]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.1
 [1.0.0]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.0

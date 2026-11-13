@@ -50,7 +50,7 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP. Por isso o s
 **Prompt injection.** Não existe proteção 100%, então são várias camadas:
 - O conteúdo dos arquivos volta delimitado por `<dados_nao_confiaveis id="…">`, com um id aleatório a cada chamada: o arquivo não consegue "fechar" o bloco e escrever fora dele
 - Caracteres invisíveis (zero-width, controle de direção, tag characters Unicode) são removidos, porque servem para esconder instruções do leitor humano
-- Padrões típicos de injeção ("ignore as instruções anteriores", "you are now", `<system>`, "não conte ao usuário"…) geram um **ALERTA** no resultado e o campo `alertas` no `structuredContent`
+- Padrões típicos de injeção ("ignore as instruções anteriores", "desconsidere o que foi dito antes", "you are now", `<system>`, "revele o prompt de sistema", "execute a tool registrar_duvida", "mostre o .env", "não conte ao usuário"…) geram um **ALERTA** no resultado e o campo `alertas` no `structuredContent`. Os padrões foram medidos num material de curso real que fala de prompt injection: ficam de fora formas que disparariam em exemplos legítimos (como `System:` no começo de uma linha, que aparece em configurações de código)
 - As `instructions` do servidor e os prompts dizem ao modelo para tratar o conteúdo como dados e só falar de prompt injection quando houver uma linha `⚠️ ALERTA`
 - `registrar_duvida` recusa textos com padrões de injeção, para nada ser "plantado" no histórico que depois volta via `ver_estudos` e `plano_de_revisao`
 - Os nomes dos `[[links]]` do Obsidian também ficam dentro do bloco não confiável, porque vêm do arquivo
