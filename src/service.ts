@@ -253,13 +253,31 @@ function isInside(base: string, target: string): boolean {
 // É recursiva: para cada subpasta, chama a si mesma. Pastas bloqueadas (3.3)
 // são puladas inteiras, sem nem entrar nelas.
 export async function listNoteFiles(dir: string, tipos: Tipo[]): Promise<string[]> {
-    return percorrer(dir, tipos, await carregarExclusao());
+    return percorrer(dir, tipos, await carregarExclusao(), true);
+}
+
+// Uma subpasta ilegível (sem permissão, ponto de montagem, placeholder do
+// iCloud/OneDrive) é pulada, em vez de derrubar a busca inteira: com NOTES_DIR
+// em ~/Documents, isso é comum. O aviso vai para o stderr (nunca o stdout, que
+// é o canal do MCP), uma vez por pasta, para não repetir a cada busca.
+const pastasIgnoradas = new Set<string>();
+function avisarPastaIgnorada(dir: string, error: unknown): void {
+    const relativo = relative(config.notesDir, dir);
+    if (pastasIgnoradas.has(relativo)) return;
+    pastasIgnoradas.add(relativo);
+    console.error(`Pasta ignorada (${(error as NodeJS.ErrnoException)?.code ?? 'erro'}): ${relativo}`);
 }
 
 // A varredura em si: a regra de exclusão é carregada uma vez em listNoteFiles e
 // passada adiante, em vez de ser relida em cada subpasta.
-async function percorrer(dir: string, tipos: Tipo[], excluido: Exclusao): Promise<string[]> {
-    const entries = await readdir(dir, { withFileTypes: true });
+// "raiz" é a pasta onde a varredura começa (NOTES_DIR ou o módulo pedido): se
+// ela for ilegível, o erro sobe, porque devolver "nada encontrado" enganaria.
+async function percorrer(dir: string, tipos: Tipo[], excluido: Exclusao, raiz = false): Promise<string[]> {
+    const entries = await readdir(dir, { withFileTypes: true }).catch(error => {
+        if (raiz) throw error;
+        avisarPastaIgnorada(dir, error);
+        return [];
+    });
     const files: string[] = [];
     for (const entry of entries) {
         if (isBlockedName(entry.name)) continue;
@@ -414,6 +432,10 @@ export async function validarPasta(caminho: string): Promise<string> {
 export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[]): Promise<Resultado[]> {
     // Passo a): onde buscar — o módulo pedido (validado pelo 3.9) ou tudo.
     const baseDir = modulo ? await resolveInsideNotes(modulo) : config.notesDir;
+    // O modelo às vezes passa um arquivo (como veio da busca) no lugar do módulo.
+    if (modulo && !(await stat(baseDir)).isDirectory()) {
+        throw new Error(`"${modulo}" é um arquivo, não um módulo. Use uma pasta, como as de listar_modulos; para ler o arquivo, use ler_material.`);
+    }
     const needle = term.toLowerCase();
     const results: Resultado[] = [];
 
