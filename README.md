@@ -65,7 +65,7 @@ Estudos/
 
 O caminho precisa ser **absoluto**. No Windows, use `/`: `"C:/Users/seu-usuario/Documents/Estudos"`. Não precisa baixar nada: o `npx` busca o pacote no npm na primeira vez, o que leva alguns segundos.
 
-**4. Inicie:** **MCP: List Servers** → `study-notes-mcp` → **Start Server**. Em **Show Output**, deve aparecer `Discovered 7 tools`.
+**4. Inicie:** **MCP: List Servers** → `study-notes-mcp` → **Start Server**. Em **Show Output**, deve aparecer `Discovered 8 tools`.
 
 **5. Use:** abra o Copilot Chat no modo **Agent** e pergunte algo sobre o seu material. Na primeira vez, o VS Code pede permissão para cada tool: clique em **Allow**.
 
@@ -84,6 +84,7 @@ Algo deu errado? Veja os [problemas comuns](https://github.com/wasinskivini/stud
 | `Registre uma dúvida no modulo03: quando usar resource em vez de tool?` | `registrar_duvida` |
 | `Marque a aula 05 do modulo03 como concluída` | `marcar_aula_concluida` |
 | `Quais dúvidas eu ainda tenho pendentes?` | `ver_estudos` |
+| `Que anotações e PDFs existem no módulo 3?` | `listar_arquivos` |
 
 Os prompts prontos aparecem digitando `/` no chat: `/mcp.study-notes-mcp.gerar_quiz` monta um quiz sobre um módulo, com a fonte de cada resposta, e `/mcp.study-notes-mcp.plano_de_revisao` monta a revisão da semana a partir das suas dúvidas. No quiz, o módulo pode ser o número (`3`), um trecho do nome (`mcp`) ou o caminho da pasta. Se ficar vazio ou houver mais de uma pasta parecida, o assistente pergunta qual você quer. Quem escreve o quiz e o plano é o modelo do chat: o servidor entrega o pedido e o material.
 
@@ -92,6 +93,7 @@ Os prompts prontos aparecem digitando `/` no chat: `/mcp.study-notes-mcp.gerar_q
 | Tipo | Nome | O que faz |
 |---|---|---|
 | 🔧 Tool | `listar_modulos` | Lista os módulos (subpastas de `NOTES_DIR`) |
+| 🔧 Tool | `listar_arquivos` | Lista os arquivos de um módulo, com tipo e tamanho, para saber o que existe antes de ler |
 | 🔧 Tool | `buscar_material` | Busca por nome exato ou por pergunta em anotações, PDFs e código, com filtro por tipo e por módulo |
 | 🔧 Tool | `ler_material` | Lê uma anotação, um arquivo de código ou páginas de um PDF |
 | 🔧 Tool | `registrar_duvida` | Salva uma dúvida para revisar depois |

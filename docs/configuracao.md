@@ -128,7 +128,7 @@ Para um projeto só, crie `.vscode/mcp.json` com o mesmo conteúdo do README. Se
 Dicas:
 - **Escolha um dos dois.** Configurado nos dois lugares, o servidor aparece duplicado e o modelo vê as tools em dobro.
 - **Não faça commit de caminhos pessoais.** Se o `.vscode/mcp.json` tiver um caminho da sua máquina, coloque-o no `.gitignore` ou use `${workspaceFolder}`.
-- **Configurado para o usuário, mas sem uso em um projeto?** No Copilot Chat, clique no ícone de ferramentas (**Configure Tools**) e desmarque o `study-notes-mcp`. O modelo deixa de ver as 7 tools ali, sem afetar os outros projetos.
+- **Configurado para o usuário, mas sem uso em um projeto?** No Copilot Chat, clique no ícone de ferramentas (**Configure Tools**) e desmarque o `study-notes-mcp`. O modelo deixa de ver as 8 tools ali, sem afetar os outros projetos.
 
 ## Atualizando
 

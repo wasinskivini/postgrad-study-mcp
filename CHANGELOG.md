@@ -4,6 +4,9 @@ As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepa
 
 ## [Não publicado]
 
+### Adicionado
+- Tool `listar_arquivos`: os arquivos de um módulo, com tipo e tamanho (até 100, com filtro por tipo). O `gerar_quiz` passa a listar o módulo antes de ler, em vez de depender de termos de busca adivinhados.
+
 ### Alterado
 - A busca por texto exato não diferencia mais acentos: `funcao` acha "função", e `ativação` acha também onde está escrito "ativacao". O trecho devolvido mantém os acentos originais.
 

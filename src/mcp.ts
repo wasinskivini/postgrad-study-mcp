@@ -22,6 +22,7 @@
  *   2.1  instructions e criação do servidor
  *   2.2  ajudantes: anotações de leitura, validação de texto e erros
  *   2.3  tool listar_modulos
+ *   2.3b tool listar_arquivos
  *   2.4  tool buscar_material (literal + por significado, quando ligada)
  *   2.5  tool ler_material
  *   2.6  tool registrar_duvida
@@ -39,7 +40,7 @@ import { completable } from "@modelcontextprotocol/sdk/server/completable.js"
 // Schema e os envia ao cliente na lista de tools (tools/list).
 import { z } from 'zod'
 import {
-    addDuvida, config, getDuvidas, getDuvidasNumeradas, getProgresso, listarPastas, listarSubmodulos, listModules,
+    addDuvida, config, getDuvidas, getDuvidasNumeradas, getProgresso, listarArquivos, listarPastas, listarSubmodulos, listModules, MAX_ARQUIVOS_LISTADOS,
     markAulaConcluida, MAX_PDF_PAGES_PER_READ, readNote, resolverDuvida, resolverLinks, semCaminhos, TIPOS, type Tipo, encontrarPastas,
 } from "./service.ts";
 import { buscaHibrida } from "./semantic.ts";
@@ -153,6 +154,49 @@ server.registerTool(
             }
         } catch (error) {
             return errorResult('listar os módulos', error)
+        }
+    }
+)
+
+// ----------------------------------------------------------------------------
+// 2.3b — TOOL listar_arquivos
+// ----------------------------------------------------------------------------
+// O que existe num módulo, antes de ler. Sem ela, para "resuma o módulo 3" ou
+// para montar um quiz, o modelo precisava inventar termos de busca, e o que ele
+// não adivinhasse ficava de fora. Os nomes de arquivo também são conteúdo do
+// usuário: voltam delimitados e passam pela detecção de injeção, como a busca.
+server.registerTool(
+    'listar_arquivos',
+    {
+        description: `Lista os arquivos de um módulo (ou de toda a pasta de estudos), com tipo e tamanho, para saber o que existe antes de ler com ler_material. Use para resumir um módulo, montar um quiz ou um plano de estudo. Filtre por tipos (ex.: só anotações e PDFs) em módulos grandes; mostra no máximo ${MAX_ARQUIVOS_LISTADOS} arquivos.`,
+        annotations: READ_ONLY,
+        inputSchema: {
+            modulo: shortText(300).optional().describe("Pasta do módulo, como retornada por listar_modulos (ex.: curso/modulo03). Vazio: toda a pasta de estudos"),
+            tipos: z.array(z.enum(TIPOS as [Tipo, ...Tipo[]])).max(3).optional().describe("Só estes tipos: anotacoes, pdf, codigo. Padrão: todos"),
+        },
+        outputSchema: {
+            arquivos: z.array(z.object({
+                arquivo: z.string().describe("Caminho para usar em ler_material"),
+                tipo: z.enum(TIPOS as [Tipo, ...Tipo[]]),
+                kb: z.number().describe("Tamanho em KB"),
+            })),
+            total: z.number().describe(`Total de arquivos encontrados (a lista mostra até ${MAX_ARQUIVOS_LISTADOS})`),
+        }
+    },
+    async ({ modulo, tipos }) => {
+        try {
+            const { arquivos, total, porTipo } = await listarArquivos(modulo, tipos)
+            const contagem = Object.entries(porTipo).map(([tipo, n]) => `${tipo}: ${n}`).join(', ')
+            const linhas = arquivos.map(a => `${a.arquivo} (${a.tipo}, ${a.kb} KB)`).join('\n')
+            const corte = total > arquivos.length
+                ? `\n\n(Mostrando ${arquivos.length} de ${total}. Filtre por tipos ou por um módulo mais específico para ver o resto.)`
+                : ''
+            const texto = total
+                ? wrapUntrusted(`arquivos de ${modulo ?? 'toda a pasta de estudos'}`, `${total} arquivo(s) — ${contagem}\n\n${linhas}`, detectInjection(linhas)) + corte
+                : 'Nenhum arquivo encontrado (só são listados os tipos lidos pelo servidor, fora do .studynotesignore).'
+            return { content: [{ type: 'text', text: texto }], structuredContent: { arquivos, total } }
+        } catch (error) {
+            return errorResult('listar os arquivos', error)
         }
     }
 )
@@ -505,7 +549,7 @@ server.registerPrompt(
     async ({ modulo, quantidade }) => semCaminhoNoErro(async () => {
         // Garante 1 ≤ total ≤ 20, mesmo que chegue "0" ou "99".
         const total = Math.min(Math.max(Number(quantidade ?? 5), 1), 20)
-        const quiz = (pasta: string) => `Use as tools buscar_material (com modulo "${pasta}") e ler_material para ler minhas anotações da pasta "${pasta}". Depois crie um quiz com ${total} perguntas de múltipla escolha baseadas nelas. Mostre as respostas só no final e, junto de cada resposta, a fonte que comprova a alternativa correta (não mostre as fontes nas perguntas, para não entregar a resposta).`
+        const quiz = (pasta: string) => `Primeiro use listar_arquivos (com modulo "${pasta}" e tipos anotacoes e pdf) para ver o que existe, depois ler_material para ler minhas anotações da pasta "${pasta}" (use buscar_material com esse modulo se precisar achar um assunto específico). Depois crie um quiz com ${total} perguntas de múltipla escolha baseadas nelas. Mostre as respostas só no final e, junto de cada resposta, a fonte que comprova a alternativa correta (não mostre as fontes nas perguntas, para não entregar a resposta).`
         const pedido = (texto: string) => ({
             messages: [{ role: 'user' as const, content: { type: 'text' as const, text: `${texto}\n\n${FONTES}\n\n${GUARDA}` } }]
         })
