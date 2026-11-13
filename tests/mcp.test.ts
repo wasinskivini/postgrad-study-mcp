@@ -526,6 +526,42 @@ describe('Study Notes MCP', () => {
         })
     })
 
+    // Uma subpasta ilegível não pode derrubar a busca (PASSO 3.5).
+    describe('pastas ilegíveis', () => {
+        // Sem permissão não existe no Windows, e o root lê tudo de qualquer jeito.
+        const semPermissao = process.platform === 'win32' || process.getuid?.() === 0
+
+        it('should skip an unreadable folder instead of failing the search', { skip: semPermissao }, async () => {
+            const { chmod } = await import('node:fs/promises')
+            const notas = join(root, 'notas-ilegiveis')
+            await mkdir(join(notas, 'modulo01'), { recursive: true })
+            await mkdir(join(notas, 'restrita'))
+            await writeFile(join(notas, 'modulo01', 'aula.md'), 'conteudo-legivel da aula')
+            await writeFile(join(notas, 'restrita', 'nota.md'), 'conteudo-legivel escondido')
+            await chmod(join(notas, 'restrita'), 0o000)
+            const ilegivelClient = await createTestClient(notas, join(root, 'data-ilegiveis'))
+            try {
+                const busca = await callTool(ilegivelClient, 'buscar_material', { consulta: 'conteudo-legivel' })
+                assert.strictEqual(busca.isError, undefined, busca.content[0].text)
+                assert.deepStrictEqual(busca.structuredContent.resultados.map((r: { arquivo: string }) => r.arquivo), [join('modulo01', 'aula.md')])
+                const modulos = await callTool(ilegivelClient, 'listar_modulos')
+                assert.deepStrictEqual(modulos.structuredContent.modulos, ['modulo01'])
+                // A pasta pedida em si continua avisando: "nada encontrado" enganaria.
+                const pedida = await callTool(ilegivelClient, 'buscar_material', { consulta: 'conteudo-legivel', modulo: 'restrita' })
+                assert.strictEqual(pedida.isError, true)
+            } finally {
+                await ilegivelClient.close()
+                await chmod(join(notas, 'restrita'), 0o755)
+            }
+        })
+
+        it('should explain when the module is a file', async () => {
+            const result = await callTool(client, 'buscar_material', { consulta: 'mcp', modulo: 'modulo03/mcp.md' })
+            assert.strictEqual(result.isError, true)
+            assert.match(result.content[0].text, /é um arquivo, não um módulo/)
+        })
+    })
+
     describe('segurança de arquivos', () => {
         it('should refuse a blocked file the same way whether it exists or not', async () => {
             // modulo03 tem um .env; modulo01 não. As duas respostas precisam ser iguais.
