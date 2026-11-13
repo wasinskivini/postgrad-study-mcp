@@ -1,6 +1,6 @@
 {
   "name": "study-notes-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "mcpName": "io.github.wasinskivini/study-notes-mcp",
   "description": "Servidor MCP para estudar com IA: busca híbrida (texto exato + significado, local e sem chave de API) em anotações, PDFs e código, sempre citando a fonte; dúvidas, progresso e quizzes",
   "main": "dist/index.js",
@@ -62,12 +62,12 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@huggingface/transformers": "4.3.1",
+    "@huggingface/transformers": "4.3.2",
     "@types/node": "^26.6.6",
     "typescript": "^7.0.2"
   },
   "peerDependencies": {
-    "@huggingface/transformers": "4.3.1"
+    "@huggingface/transformers": "^4.3.1"
   },
   "peerDependenciesMeta": {
     "@huggingface/transformers": {

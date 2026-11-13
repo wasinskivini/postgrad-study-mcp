@@ -1,20 +1,23 @@
 # Dependabot: o GitHub abre PRs quando sai versão nova de uma dependência.
-# Uma vez por mês e tudo num PR só, para não virar uma fila de PRs. Correções
-# de segurança não esperam o mês: o Dependabot abre na hora (se os alertas
+# A cada seis meses (janeiro e julho) e tudo num PR só: o projeto é estável e
+# não precisa de manutenção frequente. Se o CI do PR ficar verde, é só mergear.
+# Correções de segurança não esperam: o Dependabot abre na hora (se os alertas
 # estiverem ligados em Settings → Code security).
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: monthly
+      interval: semiannually
     groups:
       dependencias:
         patterns: ["*"]
     ignore:
-      # A versão está fixada no comando de instalação da busca por significado
-      # (--package=@huggingface/transformers@4.3.1, em docs/busca-por-significado.md).
+      # A versão testada aparece no comando de instalação da busca por significado
+      # (--package=@huggingface/transformers@4.3.2, em docs/busca-por-significado.md).
       # Atualizar só aqui deixaria os dois fora de sincronia: essa troca é manual.
+      # A peerDependency aceita qualquer 4.x a partir da 4.3.1, então quem já
+      # configurou uma versão anterior continua funcionando.
       - dependency-name: "@huggingface/transformers"
       # A versão 2 do unpdf exige Node 24, e este projeto ainda aceita o Node 22
       # (LTS até abril de 2027). O teste "should only depend on packages that
@@ -26,7 +29,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: monthly
+      interval: semiannually
     groups:
       actions:
         patterns: ["*"]

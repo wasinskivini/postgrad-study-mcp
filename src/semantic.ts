@@ -82,7 +82,7 @@ let embedderPromise: Promise<Embedder> | undefined;
 function loadEmbedder(): Promise<Embedder> {
     embedderPromise ??= (async () => {
         const { pipeline, env } = await import('@huggingface/transformers').catch(() => {
-            throw new Error('Biblioteca @huggingface/transformers não instalada. Com npx, acrescente "--package=@huggingface/transformers@4.3.1" nos args (veja "Busca por significado" no README); a partir do código-fonte, rode "npm install".');
+            throw new Error('Biblioteca @huggingface/transformers não instalada. Com npx, acrescente "--package=@huggingface/transformers@4.3.2" nos args (veja "Busca por significado" no README); a partir do código-fonte, rode "npm install".');
         });
         // Único acesso à internet do servidor: baixar o modelo na primeira vez.
         // Depois ele fica em MODELS_DIR e é lido do disco. Seus arquivos nunca
