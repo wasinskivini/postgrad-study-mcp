@@ -13,6 +13,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         node: [22.x, 24.x]
+        # O macOS do GitHub vive com fila longa ("capacity constraints"). O Node 24
+        # já é testado no Ubuntu e no Windows; no macOS basta o Node 22.
+        exclude:
+          - os: macos-latest
+            node: 24.x
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

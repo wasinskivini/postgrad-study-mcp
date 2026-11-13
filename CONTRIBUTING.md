@@ -49,7 +49,7 @@ Para atualizar: `git pull && npm install` e reinicie o servidor. Com o código-f
 
 Os testes sobem o servidor via stdio com uma cópia temporária de `tests/fixtures/notas` e um `DATA_DIR` temporário, então não tocam nos seus dados reais.
 
-A cada push na `main` e em todo pull request, o GitHub Actions roda `typecheck` e `test` no Ubuntu, no macOS e no Windows, com Node 22 e 24. Dois jobs separados testam o pacote do npm (todos os testes contra o `dist/` compilado, com `TEST_DIST=1`, mais o `test:pack`) e a busca semântica com o modelo de verdade. As dependências são atualizadas pelo [Dependabot](.github/dependabot.yml) uma vez por mês, num PR testado pelo CI. O `@huggingface/transformers` fica de fora, porque a versão dele está fixada na documentação da busca por significado e muda à mão.
+A cada push na `main` e em todo pull request, o GitHub Actions roda `typecheck` e `test` no Ubuntu e no Windows, com Node 22 e 24, e no macOS com Node 22 (a fila de macOS do GitHub é longa, e o Node 24 já é coberto pelos outros dois). Dois jobs separados testam o pacote do npm (todos os testes contra o `dist/` compilado, com `TEST_DIST=1`, mais o `test:pack`) e a busca semântica com o modelo de verdade. As dependências são atualizadas pelo [Dependabot](.github/dependabot.yml) a cada seis meses, num PR testado pelo CI. O `@huggingface/transformers` fica de fora, porque a versão testada aparece na documentação da busca por significado e muda à mão. A `peerDependency` aceita qualquer 4.x a partir da 4.3.1, para não quebrar configurações antigas.
 
 ## Fluxo de contribuição
 
@@ -112,7 +112,7 @@ git commit -m "feat: descreve o que mudou"
 git push -u origin feat/nome-curto
 ```
 
-Abra o pull request para a `main` deste repositório. O template do PR traz um checklist — preencha. O GitHub Actions roda o type check e os testes no Ubuntu, no macOS e no Windows (Node 22 e 24), além do teste do pacote do npm; o merge só é liberado com tudo verde.
+Abra o pull request para a `main` deste repositório. O template do PR traz um checklist — preencha. O GitHub Actions roda o type check e os testes no Ubuntu, no macOS e no Windows, além do teste do pacote do npm e da busca semântica; o merge só é liberado com tudo verde.
 
 > Na sua **primeira** contribuição, o mantenedor precisa aprovar a execução do Actions — é uma proteção padrão do GitHub para PRs de forks.
 

@@ -15,7 +15,7 @@ A biblioteca de embeddings entra como um segundo pacote no `npx`, e a variável 
   "args": [
     "-y",
     "--package=study-notes-mcp@latest",
-    "--package=@huggingface/transformers@4.3.1",
+    "--package=@huggingface/transformers@4.3.2",
     "study-notes-mcp"
   ],
   "env": {
@@ -53,4 +53,4 @@ Medido em dois lugares:
 
 - A biblioteca ([transformers.js](https://huggingface.co/docs/transformers.js)) ocupa ~470 MB, por isso **não** vem junto com o pacote: só baixa quem acrescentar o segundo `--package`. Sem ela, o resto do servidor funciona normalmente.
 - Cada busca por significado devolve até 8 trechos de 500 caracteres, que se juntam aos da busca literal.
-- A versão `4.3.1` da biblioteca está fixada de propósito. Ela muda junto com este documento, e não automaticamente.
+- A versão `4.3.2` da biblioteca é a testada com este servidor. Qualquer `4.x` a partir da `4.3.1` funciona: se a sua configuração já aponta para a `4.3.1`, não precisa mudar nada.

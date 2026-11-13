@@ -2,6 +2,14 @@
 
 As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/): a versão maior muda quando algo deixa de funcionar como antes (nome de tool, parâmetro, formato dos dados salvos).
 
+## [1.1.1] - 2026-11-13
+
+Manutenção para o projeto seguir estável com pouca intervenção.
+
+### Alterado
+- Busca por significado: a versão testada passa a ser a `@huggingface/transformers` 4.3.2 (mesmo motor de inferência, vetores e índice iguais). O servidor aceita qualquer 4.x a partir da 4.3.1, então configurações com `--package=@huggingface/transformers@4.3.1` continuam funcionando sem mudança.
+- CI: o macOS roda só com Node 22 (o Node 24 segue testado no Ubuntu e no Windows), por causa da fila longa das máquinas macOS do GitHub. O Dependabot passa a propor atualizações a cada seis meses; correções de segurança continuam imediatas.
+
 ## [1.1.0] - 2026-11-13
 
 Melhorias da revisão de código externa: busca, segurança e uma tool nova. Cada uma foi medida num material de curso real antes do merge.
@@ -71,6 +79,7 @@ Primeira versão publicada.
 ### Clientes testados
 - VS Code com GitHub Copilot, Claude Code e Codex. Detalhes em [docs/clientes.md](docs/clientes.md).
 
+[1.1.1]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.1.1
 [1.1.0]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.1.0
 [1.0.2]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.2
 [1.0.1]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.1
