@@ -850,6 +850,9 @@ describe('busca literal: ordem dos resultados', () => {
         await writeFile(join(notas, 'a-geral', 'embedding_util.py'), Array(40).fill('embedding = embed(embedding)').join('\n'))
         await writeFile(join(notas, 'z-temas', 'teclado.md'), 'Dicas para digitar mais rápido.')
         await writeFile(join(notas, 'z-temas', 'versionamento.md'), 'Use git push depois do commit.')
+        // "# tokenizer" dentro de um bloco de código é comentário, não título.
+        await writeFile(join(notas, 'z-temas', 'bloco.md'), '```python\n# tokenizer\ncarregar()\n```')
+        await writeFile(join(notas, 'z-temas', 'a-texto.md'), 'Hoje vimos como o tokenizer divide as palavras.')
         client = await createTestClient(notas, join(root, 'data'))
     })
 
@@ -867,6 +870,10 @@ describe('busca literal: ordem dos resultados', () => {
         const lista = await arquivos('embedding')
         assert.strictEqual(lista[0], join('z-temas', 'embeddings.md'))
         assert.ok(lista.indexOf(join('a-geral', 'embedding_util.py')) > 0, 'o código não vem em 1º lugar')
+    })
+
+    it('should not count a comment inside a code block as a heading', async () => {
+        assert.strictEqual((await arquivos('tokenizer'))[0], join('z-temas', 'a-texto.md'))
     })
 
     it('should prefer the term as a whole word', async () => {
