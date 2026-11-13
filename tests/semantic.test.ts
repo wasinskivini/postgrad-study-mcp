@@ -35,6 +35,46 @@ describe('busca semântica: sem modelo', () => {
     })
 })
 
+describe('busca semântica: linhas longas', () => {
+    it('should split a line longer than a chunk, keeping every word', () => {
+        const frase = 'O gradiente desce pela rede camada a camada. '
+        const linha = frase.repeat(210).trim()
+        const trechos = dividirEmTrechos([{ lines: ['# Aula', linha, 'depois'] }])
+        const daLinha = trechos.filter(t => t.linha === 2)
+        assert.ok(daLinha.length > 1, `${daLinha.length} trecho(s)`)
+        assert.ok(daLinha.every(t => t.texto.length <= 800), daLinha.map(t => t.texto.length).join(', '))
+        // Nada se perde no corte: juntando os pedaços, volta a linha inteira.
+        assert.strictEqual(daLinha.map(t => t.texto).join(' '), linha)
+        // O corte cai no fim de uma frase, não no meio de uma palavra.
+        assert.ok(daLinha.slice(0, -1).every(t => t.texto.endsWith('.')))
+    })
+
+    // Sem linhas longas, os trechos precisam ser idênticos aos da versão
+    // anterior: é o que mantém válidos os índices já salvos.
+    it('should keep the chunks of normal lines as they were', () => {
+        const versaoAnterior = (lines: string[]) => {
+            const trechos: { linha: number; texto: string }[] = []
+            let atual: string[] = []
+            let inicio = 1
+            const fechar = () => {
+                const texto = atual.join('\n').trim()
+                if (texto.replace(/\s/g, '').length >= 20) trechos.push({ linha: inicio, texto })
+                atual = []
+            }
+            for (const [index, line] of lines.entries()) {
+                if (!atual.length) inicio = index + 1
+                atual.push(line)
+                if (atual.join('\n').length >= 800) fechar()
+            }
+            fechar()
+            return trechos
+        }
+        const linhas = Array.from({ length: 120 }, (_, i) => `linha ${i} ` + 'com texto de estudo '.repeat(i % 7) + (i % 11 === 0 ? '' : '.'))
+        const novos = dividirEmTrechos([{ lines: linhas }]).map(({ linha, texto }) => ({ linha, texto }))
+        assert.deepStrictEqual(novos, versaoAnterior(linhas))
+    })
+})
+
 describe('busca híbrida: fundir', () => {
     const achado = (arquivo: string, linha = 1, pagina?: number) => ({ arquivo, linha, pagina, trecho: 'x', alertas: [] })
     const parecido = (arquivo: string, linha: number, similaridade: number) => ({ ...achado(arquivo, linha), similaridade })
@@ -42,6 +82,13 @@ describe('busca híbrida: fundir', () => {
     it('should rank higher the file that both searches found', () => {
         const resultado = fundir([achado('a.md'), achado('b.md')], [parecido('b.md', 9, 0.9)])
         assert.strictEqual(resultado[0].arquivo, 'b.md')
+    })
+
+    it('should not mark two pieces of the same long line as found by both searches', () => {
+        const resultado = fundir([], [parecido('a.md', 7, 0.9), parecido('a.md', 7, 0.8)])
+        assert.strictEqual(resultado.length, 1)
+        assert.strictEqual(resultado[0].origem, 'significado')
+        assert.strictEqual(resultado[0].similaridade, 0.9)
     })
 
     it('should merge the same line found by both searches', () => {
