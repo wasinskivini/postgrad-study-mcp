@@ -33,6 +33,13 @@ As variáveis vão no bloco `"env"` do `mcp.json` (veja o passo 3 do [README](..
 
 Qualquer outra extensão nunca é lida, assim como arquivos e pastas ocultos (`.env`, `.git`) e pastas como `node_modules`, `dist` e `venv`. Pastas sem nenhum arquivo lido (por exemplo, só com `.json` ou `.sh`) não aparecem como módulo nem nas sugestões do quiz. Arquivos novos aparecem na próxima busca, sem reiniciar o servidor.
 
+### Links simbólicos (atalhos)
+
+A busca, a lista de arquivos e a busca por significado **ignoram links simbólicos**, de arquivo ou de pasta. É de propósito: em material de curso, links costumam ser cópias do mesmo arquivo (`AGENTS.md`, `.cursorrules` e `.github/copilot-instructions.md` apontando para o `CLAUDE.md`), e segui-los repetiria os resultados. Também evita laços, quando um link aponta para uma pasta acima dele.
+
+- **Ler um link pelo caminho funciona**, desde que o destino real fique dentro de `NOTES_DIR`. Um link que aponta para fora é bloqueado, como qualquer caminho fora da pasta.
+- **Se você colocou na pasta de estudos um link para uma pasta de curso que está em outro lugar**, o conteúdo dela não aparece. Aponte o `NOTES_DIR` para uma pasta que contenha as duas, ou mova a pasta do curso para dentro da pasta de estudos.
+
 ## Filtrando a busca
 
 Não é preciso passar parâmetros: basta pedir no chat e o modelo preenche `tipos` e `modulo` sozinho.
