@@ -65,6 +65,22 @@ Crie um quiz de 5 perguntas sobre o módulo 3 do meu material usando as tools
 do study-notes-mcp. Cite a fonte de cada resposta e mostre as respostas no final.
 ```
 
+## Windows
+
+O servidor é testado no Windows a cada mudança (testes de ponta a ponta, pacote do npm e busca por significado), mas o uso dentro de cada cliente no Windows ainda não foi verificado por alguém. Dois cuidados:
+
+- **Caminho:** use `/` no `NOTES_DIR`, como em `"C:/Users/seu-usuario/Documents/Estudos"`.
+- **Se o servidor não subir** (erro como `spawn npx ENOENT`): no Windows o `npx` é um arquivo `npx.cmd`, que alguns clientes só conseguem iniciar pelo prompt de comando. Troque o comando por `cmd` e coloque `/c npx` no começo dos argumentos:
+
+```json
+"command": "cmd",
+"args": ["/c", "npx", "-y", "study-notes-mcp@latest"]
+```
+
+No Claude Code: `claude mcp add study-notes-mcp --scope user -e NOTES_DIR="C:/Users/seu-usuario/Documents/Estudos" -- cmd /c npx -y study-notes-mcp@latest`. No Codex: `command = "cmd"` e `args = ["/c", "npx", "-y", "study-notes-mcp@latest"]`.
+
+Usou no Windows? Conte numa [issue](https://github.com/wasinskivini/study-notes-mcp/issues/new/choose) o que funcionou, para atualizarmos esta página.
+
 ## Outros clientes
 
 Qualquer cliente que fale MCP por stdio deve conseguir usar as tools: Claude Desktop, Cursor, Windsurf e outros. A configuração costuma ser a mesma ideia (comando `npx`, argumento `-y study-notes-mcp@latest` e a variável `NOTES_DIR`), mas eles não foram testados. Se você testar, conte numa [issue](https://github.com/wasinskivini/study-notes-mcp/issues/new/choose) para incluirmos aqui.
