@@ -29,6 +29,7 @@
 import { readdir, readFile, writeFile, mkdir, realpath, rename, rm, stat } from 'node:fs/promises';
 import { extname, join, relative, resolve, sep } from 'node:path';
 import { homedir } from 'node:os';
+import { randomBytes } from 'node:crypto';
 // unpdf: extrai o texto de PDFs usando o pdf.js da Mozilla, sem dependências nativas.
 import { extractText, getDocumentProxy } from 'unpdf';
 // Proteções aplicadas a todo texto que sai daqui (PASSO 4).
@@ -557,7 +558,9 @@ async function readJson<T>(name: string, fallback: T): Promise<T> {
 // lê um arquivo pela metade.
 export async function gravarAtomico(caminho: string, conteudo: string): Promise<void> {
     await mkdir(config.dataDir, { recursive: true, mode: 0o700 });
-    const temporario = `${caminho}.${process.pid}.tmp`;
+    // Nome único por chamada (e não só por processo): duas gravações ao mesmo
+    // tempo no mesmo arquivo não podem usar o mesmo temporário.
+    const temporario = `${caminho}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
     await writeFile(temporario, conteudo, { mode: 0o600 });
     try {
         await tentarDeNovo(() => rename(temporario, caminho));
@@ -586,6 +589,19 @@ export async function tentarDeNovo<T>(acao: () => Promise<T>): Promise<T> {
     }
 }
 
+// Fila por arquivo: o ciclo inteiro (ler, alterar, gravar) de uma chamada
+// termina antes de o da próxima começar. Sem isso, um cliente que chama
+// registrar_duvida três vezes em paralelo faz as três lerem a mesma lista, e
+// só a última gravação sobrevive. Vale dentro de um processo; dois clientes
+// abertos ao mesmo tempo ainda podem, raramente, sobrescrever um ao outro.
+const filas = new Map<string, Promise<unknown>>();
+function emFila<T>(name: string, acao: () => Promise<T>): Promise<T> {
+    const atual = (filas.get(name) ?? Promise.resolve()).catch(() => {}).then(acao);
+    // O erro de uma chamada volta para quem chamou, mas não trava a fila.
+    filas.set(name, atual.catch(() => {}));
+    return atual;
+}
+
 async function writeJson(name: string, data: unknown): Promise<void> {
     await gravarAtomico(join(config.dataDir, name), JSON.stringify(data, null, 2));
 }
@@ -607,22 +623,26 @@ export async function getDuvidasNumeradas(): Promise<DuvidaNumerada[]> {
 
 // Marca como resolvida pelo número. Chamar de novo não muda nada (idempotente).
 export async function resolverDuvida(numero: number): Promise<DuvidaNumerada> {
-    const duvidas = await getDuvidas();
-    const duvida = duvidas[numero - 1];
-    if (!duvida) throw new Error(`Dúvida #${numero} não existe. Há ${duvidas.length} dúvida(s) registrada(s).`);
-    duvida.resolvida = true;
-    await writeJson('duvidas.json', duvidas);
-    return { ...duvida, numero };
+    return emFila('duvidas.json', async () => {
+        const duvidas = await getDuvidas();
+        const duvida = duvidas[numero - 1];
+        if (!duvida) throw new Error(`Dúvida #${numero} não existe. Há ${duvidas.length} dúvida(s) registrada(s).`);
+        duvida.resolvida = true;
+        await writeJson('duvidas.json', duvidas);
+        return { ...duvida, numero };
+    });
 }
 
 // Acrescenta uma dúvida ao final da lista, como não resolvida. O número dela é a
 // posição na lista (ver getDuvidasNumeradas).
 export async function addDuvida(modulo: string, texto: string): Promise<Duvida> {
-    const duvidas = await getDuvidas();
-    const duvida = { modulo: clean(modulo), texto: clean(texto), criadaEm: new Date().toISOString(), resolvida: false };
-    duvidas.push(duvida);
-    await writeJson('duvidas.json', duvidas);
-    return duvida;
+    return emFila('duvidas.json', async () => {
+        const duvidas = await getDuvidas();
+        const duvida = { modulo: clean(modulo), texto: clean(texto), criadaEm: new Date().toISOString(), resolvida: false };
+        duvidas.push(duvida);
+        await writeJson('duvidas.json', duvidas);
+        return duvida;
+    });
 }
 
 // Aulas concluídas por módulo, ex.: { modulo01: ['aula 1', 'aula 2'] }.
@@ -633,14 +653,16 @@ export async function getProgresso(): Promise<Progresso> {
 
 // Marca a aula como concluída no módulo e devolve o progresso completo.
 export async function markAulaConcluida(modulo: string, aula: string): Promise<Progresso> {
-    const progresso = await getProgresso();
-    const key = clean(modulo);
-    // Set não aceita repetidos: marcar a mesma aula duas vezes não duplica.
-    const aulas = new Set(progresso[key] ?? []);
-    aulas.add(clean(aula));
-    progresso[key] = [...aulas];
-    await writeJson('progresso.json', progresso);
-    return progresso;
+    return emFila('progresso.json', async () => {
+        const progresso = await getProgresso();
+        const key = clean(modulo);
+        // Set não aceita repetidos: marcar a mesma aula duas vezes não duplica.
+        const aulas = new Set(progresso[key] ?? []);
+        aulas.add(clean(aula));
+        progresso[key] = [...aulas];
+        await writeJson('progresso.json', progresso);
+        return progresso;
+    });
 }
 
 // ----------------------------------------------------------------------------

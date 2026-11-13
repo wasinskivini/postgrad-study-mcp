@@ -491,6 +491,33 @@ describe('Study Notes MCP', () => {
             }
         })
 
+        // Clientes MCP chamam tools em paralelo ("registre estas três dúvidas").
+        it('should keep every change when tools that save run at the same time', async () => {
+            const dataDir = join(root, 'data-paralelo')
+            const paraleloClient = await createTestClient(join(root, 'notas'), dataDir)
+            try {
+                const registros = await Promise.all(['primeira', 'segunda', 'terceira'].map(texto =>
+                    callTool(paraleloClient, 'registrar_duvida', { modulo: 'modulo01', texto })))
+                assert.ok(registros.every(r => !r.isError), registros.map(r => r.content[0].text).join(' | '))
+                const aulas = await Promise.all(['01', '02', '03'].map(aula =>
+                    callTool(paraleloClient, 'marcar_aula_concluida', { modulo: 'modulo01', aula })))
+                assert.ok(aulas.every(r => !r.isError))
+                // Registrar e resolver ao mesmo tempo também mexem no mesmo arquivo.
+                await Promise.all([
+                    callTool(paraleloClient, 'resolver_duvida', { numero: 1 }),
+                    callTool(paraleloClient, 'registrar_duvida', { modulo: 'modulo01', texto: 'quarta' }),
+                ])
+                const { readFile } = await import('node:fs/promises')
+                const duvidas = JSON.parse(await readFile(join(dataDir, 'duvidas.json'), 'utf8'))
+                assert.deepStrictEqual(duvidas.map((d: { texto: string }) => d.texto).sort(), ['primeira', 'quarta', 'segunda', 'terceira'])
+                assert.strictEqual(duvidas.filter((d: { resolvida: boolean }) => d.resolvida).length, 1)
+                const progresso = JSON.parse(await readFile(join(dataDir, 'progresso.json'), 'utf8'))
+                assert.deepStrictEqual(progresso.modulo01.sort(), ['01', '02', '03'])
+            } finally {
+                await paraleloClient.close()
+            }
+        })
+
         it('should not leave temporary files behind after saving', async () => {
             await callTool(client, 'marcar_aula_concluida', { modulo: 'modulo01', aula: '01' })
             const { readdir } = await import('node:fs/promises')

@@ -56,6 +56,7 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP. Por isso o s
 - Argumentos das tools têm tamanho máximo e não aceitam caracteres invisíveis; `gerar_quiz` só aceita módulos que existem
 
 **Dados e modelo**
+- Gravações em `DATA_DIR` entram numa fila por arquivo: chamadas simultâneas da mesma tool (comuns quando o modelo registra várias dúvidas de uma vez) não perdem dados. Com o servidor aberto em **dois clientes ao mesmo tempo**, duas gravações no mesmo instante ainda podem, raramente, sobrescrever uma à outra
 - Tools anotadas com `readOnlyHint`, para o cliente distinguir leitura de escrita. As de escrita só alteram os JSONs em `DATA_DIR`, criados com permissão `600`
 - Busca por significado: o modelo é baixado de um commit fixo do Hugging Face (uma versão nova publicada lá não é baixada sem querer), e o índice salvo em `DATA_DIR` guarda o texto já com segredos redigidos, com permissão `600`
 
