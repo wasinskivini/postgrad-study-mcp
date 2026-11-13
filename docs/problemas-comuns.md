@@ -17,7 +17,7 @@
 | No Codex, `/gerar_quiz` não aparece | A extensão do Codex não exibe prompts de servidores MCP. Peça o quiz em texto. Detalhes em [clientes testados](clientes.md#codex-por-que-os-prompts-não-aparecem) |
 | Erro dizendo que `duvidas.json` (ou `progresso.json`) está com o JSON inválido | O arquivo em `DATA_DIR` foi editado com erro de formato. O servidor não o altera para não apagar as suas dúvidas: corrija o erro (um editor como o VS Code aponta a linha) ou mova o arquivo para outro lugar para começar uma lista nova |
 | Parei o servidor e ele voltou sozinho | O VS Code reinicia servidores a cada conversa nova. Para desligar de verdade, remova a entrada do `mcp.json` |
-| A busca avisa que "a busca por significado não está disponível" | Falta a biblioteca de embeddings ou não deu para baixar o modelo. Veja [como ligar](busca-por-significado.md#como-ligar). Enquanto isso, a busca literal funciona normalmente |
+| A busca avisa que "a busca por significado não está disponível" | Falta a biblioteca de embeddings ou não deu para baixar o modelo. Veja [como ligar](busca-por-significado.md#como-ligar). O resource `estudos://indice` mostra o motivo exato no campo `erro`. Enquanto isso, a busca literal funciona normalmente |
 
 Para ver o que o servidor está fazendo: **MCP: List Servers** → `study-notes-mcp` → **Show Output**. A primeira linha mostra a versão em uso (`Study Notes MCP Server 1.0.2 running on stdio`). No terminal, `npx -y study-notes-mcp@latest --version` mostra a versão mais recente. Clicando no bloco "Ran buscar_material" de uma resposta do chat, dá para ver exatamente o que o servidor devolveu.
 

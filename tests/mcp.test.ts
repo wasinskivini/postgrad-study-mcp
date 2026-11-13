@@ -326,6 +326,15 @@ describe('Study Notes MCP', () => {
             assert.deepStrictEqual(await readJsonResource(client, 'estudos://progresso'), { modulo03: ['05'] })
         })
 
+        it('should expose the semantic index state as a resource', async () => {
+            const { resources } = await client.listResources()
+            assert.deepStrictEqual(resources.map(r => r.uri).sort(), ['estudos://duvidas', 'estudos://indice', 'estudos://progresso'])
+            // Nos testes a busca por significado fica desligada: o resource explica como ligar.
+            const indice = await readJsonResource(client, 'estudos://indice')
+            assert.strictEqual(indice.ligada, false)
+            assert.match(indice.comoLigar, /SEMANTIC_SEARCH=true/)
+        })
+
         it('should list doubts and progress as a tool', async () => {
             const result = await callTool(client, 'ver_estudos')
             assert.strictEqual(result.structuredContent.duvidas[0].texto, 'Quando usar resource vs tool?')

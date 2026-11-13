@@ -275,6 +275,23 @@ export function atualizarIndice(): Promise<void> {
     return construcao;
 }
 
+// Uma foto do índice para o resource estudos://indice: dá para ver se ele está
+// pronto, o progresso e o último erro sem precisar fazer uma busca. Sem vetores
+// nem textos: só números.
+export function estadoDoIndice() {
+    let trechos = 0;
+    for (const dados of indice.values()) trechos += dados.trechos.length;
+    return {
+        ligada: true,
+        estado: status.estado,
+        progresso: { feitos: status.feitos, total: status.total },
+        arquivosNoIndice: indice.size,
+        trechos,
+        atualizadoEm: ultimaAtualizacao ? new Date(ultimaAtualizacao).toISOString() : null,
+        ...(status.estado === 'erro' ? { erro: status.erro } : {}),
+    };
+}
+
 // ----------------------------------------------------------------------------
 // 6.5 — BUSCAR POR SIMILARIDADE
 // ----------------------------------------------------------------------------
@@ -296,8 +313,10 @@ export async function semanticSearch(pergunta: string, modulo?: string, tipos?: 
     // Passo a): mantém o índice em dia (em segundo plano, sem esperar).
     if (status.estado !== 'construindo' && Date.now() - ultimaAtualizacao > REFRESH_MS) void atualizarIndice();
     if (status.estado === 'erro' && !indice.size) throw new Error(`Busca semântica indisponível: ${status.erro}`);
+    // Antes de listar os arquivos o total ainda é 0: "0 de 0" confundiria.
+    const progresso = status.total ? `${status.feitos} de ${status.total} arquivos` : 'preparando';
     const aviso = status.estado === 'construindo'
-        ? `Índice semântico em construção (${status.feitos} de ${status.total} arquivos): os resultados por significado podem estar incompletos`
+        ? `Índice semântico em construção (${progresso}): os resultados por significado podem estar incompletos`
         : undefined;
     if (!indice.size) return { resultados: [], aviso };
 

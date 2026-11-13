@@ -35,6 +35,8 @@ Ela usa **embeddings**, o mesmo "R" do RAG: cada trecho das suas anotações e P
 2. **Indexação:** o servidor divide anotações e PDFs em trechos de ~800 caracteres (um parágrafo maior que isso, comum no Obsidian, vira vários trechos, cortados no fim de uma frase) e gera o vetor de cada um, em segundo plano. Textos idênticos (como cópias do mesmo material) passam pelo modelo uma vez só. Para ~1.900 arquivos, leva cerca de **1,5 minuto** num Mac com Apple Silicon. Enquanto isso, a busca avisa que o índice está incompleto e a busca literal continua funcionando.
 3. **Depois:** o índice fica salvo em `DATA_DIR/indice-semantico.json`. Nas próximas vezes, só arquivos novos ou alterados são processados, em segundos.
 
+Para acompanhar a indexação sem fazer uma busca, anexe o resource **`estudos://indice`** ao chat (no VS Code: **Add Context → MCP Resources**). Ele mostra o estado (`construindo`, `pronto` ou `erro`), o progresso (`feitos` de `total` arquivos), quantos arquivos e trechos estão no índice e, se algo falhou, o motivo.
+
 Código **não** entra no índice: nomes como `registerTool` já são termos exatos, e a busca literal resolve melhor. Arquivos do [`.studynotesignore`](configuracao.md#ignorando-arquivos-e-pastas-studynotesignore) também ficam de fora.
 
 ## Por que juntar as duas buscas

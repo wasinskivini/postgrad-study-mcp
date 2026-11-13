@@ -58,6 +58,18 @@ describe('busca semântica: com modelo', () => {
         assert.match(result.content[0].text, /<dados_nao_confiaveis/)
     })
 
+    it('should report the index as ready in estudos://indice', { timeout: 180_000 }, async () => {
+        await buscar('embeddings')
+        const { contents } = await client.readResource({ uri: 'estudos://indice' })
+        const indice = JSON.parse((contents[0] as { text: string }).text)
+        assert.strictEqual(indice.ligada, true)
+        assert.strictEqual(indice.estado, 'pronto')
+        assert.strictEqual(indice.progresso.feitos, indice.progresso.total)
+        assert.ok(indice.arquivosNoIndice >= 2 && indice.trechos >= indice.arquivosNoIndice)
+        assert.ok(!Number.isNaN(Date.parse(indice.atualizadoEm)))
+        assert.strictEqual(indice.erro, undefined)
+    })
+
     it('should rank unrelated content lower', { timeout: 60_000 }, async () => {
         const result = await buscar('receita de bolo')
         assert.strictEqual(result.structuredContent.resultados[0].arquivo, join('modulo01', 'receita.md'))

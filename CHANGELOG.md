@@ -2,6 +2,14 @@
 
 As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/): a versão maior muda quando algo deixa de funcionar como antes (nome de tool, parâmetro, formato dos dados salvos).
 
+## [Não publicado]
+
+### Adicionado
+- Resource `estudos://indice`: o estado da busca por significado (ligada ou não, progresso da indexação, arquivos e trechos no índice e o último erro), sem precisar fazer uma busca.
+
+### Alterado
+- O aviso de índice em construção diz "preparando" em vez de "0 de 0 arquivos" enquanto a lista de arquivos ainda está sendo montada.
+
 ## [1.1.1] - 2026-11-13
 
 Manutenção para o projeto seguir estável com pouca intervenção.
