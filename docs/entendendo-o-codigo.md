@@ -21,6 +21,7 @@ tests/
   semantic.model.ts  # PASSO 5.5 — busca semântica com o modelo de verdade
   pacote.smoke.ts    # PASSO 5.6 — instala o pacote do npm numa pasta vazia e sobe o servidor
   avaliacao.model.ts # PASSO 5.7 — mede o acerto das buscas (literal, semântica e híbrida)
+  secoes.model.ts    # PASSO 5.7b — mede se a busca por significado devolve a seção certa de notas longas
   fixtures/          # anotações de exemplo
 ```
 

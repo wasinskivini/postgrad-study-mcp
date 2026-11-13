@@ -1,0 +1,20 @@
+[
+  { "pergunta": "por que mudar uma linha do código não obriga a reinstalar tudo no build?", "arquivo": "modulo05/docker-na-pratica.md", "secao": "Imagens e camadas" },
+  { "pergunta": "como não perder os dados do banco quando apago o container?", "arquivo": "modulo05/docker-na-pratica.md", "secao": "Volumes" },
+  { "pergunta": "como a API acha o banco sem saber o IP?", "arquivo": "modulo05/docker-na-pratica.md", "secao": "Redes entre containers" },
+  { "pergunta": "subir a aplicação, o banco e o cache com um comando só", "arquivo": "modulo05/docker-na-pratica.md", "secao": "Docker Compose" },
+  { "pergunta": "é seguro copiar a senha do banco para dentro da imagem?", "arquivo": "modulo05/docker-na-pratica.md", "secao": "Variáveis de ambiente e segredos" },
+  { "pergunta": "como deixar a imagem menor e não rodar como administrador?", "arquivo": "modulo05/docker-na-pratica.md", "secao": "Boas práticas de Dockerfile" },
+  { "pergunta": "o que fazer com rodapés e numeração de página antes de indexar?", "arquivo": "modulo06/pipeline-rag.md", "secao": "Ingestão de documentos" },
+  { "pergunta": "qual o tamanho ideal dos pedaços de texto?", "arquivo": "modulo06/pipeline-rag.md", "secao": "Divisão em trechos" },
+  { "pergunta": "dá para perguntar em português e achar texto em inglês?", "arquivo": "modulo06/pipeline-rag.md", "secao": "Geração de embeddings" },
+  { "pergunta": "como achar rápido os vetores mais parecidos entre milhões?", "arquivo": "modulo06/pipeline-rag.md", "secao": "Recuperação" },
+  { "pergunta": "como reordenar os candidatos com uma nota mais precisa?", "arquivo": "modulo06/pipeline-rag.md", "secao": "Reranking" },
+  { "pergunta": "o que o modelo deve fazer quando o contexto não tem a resposta?", "arquivo": "modulo06/pipeline-rag.md", "secao": "Geração da resposta" },
+  { "pergunta": "como saber se uma mudança no sistema melhorou de verdade?", "arquivo": "modulo06/pipeline-rag.md", "secao": "Avaliação" },
+  { "pergunta": "o que nunca deve aparecer nos registros da aplicação?", "arquivo": "modulo07/observabilidade.md", "secao": "Logs estruturados" },
+  { "pergunta": "por que olhar o percentil 99 e não a média da latência?", "arquivo": "modulo07/observabilidade.md", "secao": "Métricas" },
+  { "pergunta": "qual etapa da requisição está deixando tudo lento?", "arquivo": "modulo07/observabilidade.md", "secao": "Traces distribuídos" },
+  { "pergunta": "a equipe começou a ignorar os avisos, o que fazer?", "arquivo": "modulo07/observabilidade.md", "secao": "Alertas" },
+  { "pergunta": "como descobrir qual cliente está gastando mais com o modelo?", "arquivo": "modulo07/observabilidade.md", "secao": "Custos de LLM" }
+]

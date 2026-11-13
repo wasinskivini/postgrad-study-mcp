@@ -50,8 +50,8 @@ describe('busca semântica: linhas longas', () => {
         assert.ok(daLinha.slice(0, -1).every(t => t.texto.endsWith('.')))
     })
 
-    // Sem linhas longas, os trechos precisam ser idênticos aos da versão
-    // anterior: é o que mantém válidos os índices já salvos.
+    // Sem títulos nem linhas longas, os trechos são os mesmos da versão
+    // anterior: o corte só muda onde há motivo.
     it('should keep the chunks of normal lines as they were', () => {
         const versaoAnterior = (lines: string[]) => {
             const trechos: { linha: number; texto: string }[] = []
@@ -73,6 +73,27 @@ describe('busca semântica: linhas longas', () => {
         const linhas = Array.from({ length: 120 }, (_, i) => `linha ${i} ` + 'com texto de estudo '.repeat(i % 7) + (i % 11 === 0 ? '' : '.'))
         const novos = dividirEmTrechos([{ lines: linhas }]).map(({ linha, texto }) => ({ linha, texto }))
         assert.deepStrictEqual(novos, versaoAnterior(linhas))
+    })
+})
+
+describe('busca semântica: trechos por seção', () => {
+    const paragrafo = (assunto: string) => `Texto de estudo sobre ${assunto}, `.repeat(12).trim()
+
+    it('should start a new chunk at each Markdown heading', () => {
+        const trechos = dividirEmTrechos([{ lines: ['# Docker', paragrafo('imagens'), '## Volumes', paragrafo('volumes'), '## Redes', paragrafo('redes')] }])
+        assert.deepStrictEqual(trechos.map(t => t.linha), [1, 3, 5])
+        assert.ok(trechos[1].texto.startsWith('## Volumes') && !trechos[1].texto.includes('redes'))
+    })
+
+    it('should join a very short section to the next one', () => {
+        const trechos = dividirEmTrechos([{ lines: ['## Resumo', 'Uma linha curta de introdução.', '## Detalhes', paragrafo('detalhes')] }])
+        assert.deepStrictEqual(trechos.map(t => t.linha), [1])
+        assert.match(trechos[0].texto, /## Detalhes/)
+    })
+
+    it('should not treat a comment inside a code block as a heading', () => {
+        const trechos = dividirEmTrechos([{ lines: [paragrafo('build'), '```bash', '# instala as dependências', 'npm install', '```', 'Depois rode os testes.'] }])
+        assert.strictEqual(trechos.length, 1)
     })
 })
 
