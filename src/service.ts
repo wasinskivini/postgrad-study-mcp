@@ -28,7 +28,7 @@
  */
 import { readdir, readFile, writeFile, mkdir, realpath, rename, rm, stat } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
-import { extname, join, relative, resolve, sep } from 'node:path';
+import { basename, extname, join, relative, resolve, sep } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 // unpdf: extrai o texto de PDFs usando o pdf.js da Mozilla, sem dependências nativas.
@@ -62,8 +62,8 @@ const MAX_RESULTS = 20;
 // No máximo 3 resultados por arquivo: um arquivo que repete o termo 50 vezes
 // não ocupa sozinho os 20 resultados.
 const MAX_RESULTS_PER_FILE = 3;
-// Ordem da busca: suas anotações primeiro, depois PDFs, por último o código
-// (que costuma repetir os mesmos termos muitas vezes).
+// Desempate da busca literal (a pontuação vem antes): suas anotações primeiro,
+// depois PDFs, por último o código (que costuma repetir os mesmos termos).
 const TYPE_PRIORITY: Tipo[] = ['anotacoes', 'pdf', 'codigo'];
 const MAX_FILE_BYTES = 200_000;
 const MAX_PDF_BYTES = 30_000_000;
@@ -226,18 +226,68 @@ export async function carregarExclusao(): Promise<Exclusao> {
 // 3.4 — PDFs: EXTRAÇÃO COM CACHE
 // ----------------------------------------------------------------------------
 // Texto por página; extraído uma vez e reaproveitado enquanto o arquivo não mudar
-// A chave é o caminho; mtimeMs (data de modificação) detecta se o PDF mudou.
-// O cache vive enquanto o processo vive (o VS Code reinicia o servidor a cada
-// conversa nova, então na prática ele vale durante uma conversa).
-const pdfCache = new Map<string, { mtimeMs: number; pages: string[] }>();
+// (mesma data de modificação e mesmo tamanho). Extrair é a parte lenta: num
+// material com 57 PDFs, ~0,8 s a cada servidor novo, e o VS Code inicia um
+// servidor por conversa. Por isso o texto também fica salvo em
+// DATA_DIR/cache-pdf.json, e a primeira busca de cada conversa o reaproveita.
+// Em memória a chave é o caminho completo; no disco, o caminho relativo a
+// NOTES_DIR (o arquivo salvo não leva o nome do seu usuário).
+type PdfExtraido = { mtimeMs: number; size: number; pages: string[] };
+const pdfCache = new Map<string, PdfExtraido>();
+const PDF_CACHE_FILE = 'cache-pdf.json';
+// Sobe quando a forma de extrair mudar: um cache de outra versão é ignorado.
+const PDF_CACHE_VERSION = 1;
+let cacheEmDisco: Promise<void> | undefined;
+let gravacaoAgendada: ReturnType<typeof setTimeout> | undefined;
+
+// Lê o cache salvo uma vez por processo. Sem arquivo (primeira vez), de outra
+// versão ou corrompido: começa vazio, e os PDFs são extraídos de novo.
+function carregarCachePdf(): Promise<void> {
+    cacheEmDisco ??= (async () => {
+        try {
+            const salvo = JSON.parse(await readFile(join(config.dataDir, PDF_CACHE_FILE), 'utf8'));
+            if (salvo?.versao !== PDF_CACHE_VERSION) return;
+            for (const [arquivo, dados] of Object.entries<PdfExtraido>(salvo.arquivos ?? {})) {
+                const file = join(config.notesDir, arquivo);
+                if (isInside(config.notesDir, file) && Array.isArray(dados?.pages) && !pdfCache.has(file)) pdfCache.set(file, dados);
+            }
+        } catch {
+            // Sem cache salvo: segue sem ele.
+        }
+    })();
+    return cacheEmDisco;
+}
+
+// Grava o cache um segundo depois da última extração: uma busca que extrai 50
+// PDFs grava uma vez só. unref: o temporizador não segura o servidor aberto.
+// PDFs apagados saem do cache aqui. Falhar ao gravar não atrapalha a busca.
+function agendarGravacaoCachePdf(): void {
+    if (gravacaoAgendada) return;
+    gravacaoAgendada = setTimeout(async () => {
+        gravacaoAgendada = undefined;
+        try {
+            const arquivos: Record<string, PdfExtraido> = {};
+            for (const [file, dados] of pdfCache) {
+                if (!isInside(config.notesDir, file)) continue;
+                if (!(await stat(file).catch(() => undefined))) { pdfCache.delete(file); continue; }
+                arquivos[relative(config.notesDir, file)] = dados;
+            }
+            await gravarAtomico(join(config.dataDir, PDF_CACHE_FILE), JSON.stringify({ versao: PDF_CACHE_VERSION, arquivos }));
+        } catch (error) {
+            console.error('Não foi possível salvar o cache de PDFs:', semCaminhos(error instanceof Error ? error.message : String(error)));
+        }
+    }, 1000);
+    gravacaoAgendada.unref();
+}
 
 // Texto de cada página do PDF. Usa o cache enquanto o arquivo não mudar e recusa
 // PDFs grandes demais (limite MAX_PDF_BYTES).
 async function readPdfPages(file: string): Promise<string[]> {
     const info = await stat(file);
     if (info.size > MAX_PDF_BYTES) throw new Error(`PDF grande demais (${info.size} bytes, limite ${MAX_PDF_BYTES})`);
+    await carregarCachePdf();
     const cached = pdfCache.get(file);
-    if (cached?.mtimeMs === info.mtimeMs) return cached.pages;
+    if (cached?.mtimeMs === info.mtimeMs && cached.size === info.size) return cached.pages;
 
     // verbosity 0: o pdf.js não pode escrever avisos no stdout, que é o canal do MCP
     // (ver PASSO 1.1: qualquer texto extra no stdout corrompe o protocolo).
@@ -245,7 +295,8 @@ async function readPdfPages(file: string): Promise<string[]> {
     try {
         // mergePages: false → um texto por página, para podermos citar "p. N".
         const { text } = await extractText(pdf, { mergePages: false });
-        pdfCache.set(file, { mtimeMs: info.mtimeMs, pages: text });
+        pdfCache.set(file, { mtimeMs: info.mtimeMs, size: info.size, pages: text });
+        agendarGravacaoCachePdf();
         return text;
     } finally {
         // Libera a memória do documento, mesmo se a extração falhar.
@@ -539,36 +590,99 @@ export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[])
     // Passo a): onde buscar — o módulo pedido (validado pelo 3.9) ou tudo.
     const baseDir = await pastaDoModulo(modulo);
     const needle = paraComparar(term);
-    const results: Resultado[] = [];
 
-    // Passo b): ordena os arquivos por tipo (anotações → PDFs → código). O sort
-    // é estável: dentro de cada tipo, a ordem das pastas se mantém.
+    // Passo b): os arquivos, em ordem de tipo (anotações → PDFs → código) e de
+    // pasta. Essa ordem só desempata: quem decide é a pontuação do passo d).
     const files = (await listNoteFiles(baseDir, enabledTypes(tipos)))
         .sort((a, b) => TYPE_PRIORITY.indexOf(typeOf(a)!) - TYPE_PRIORITY.indexOf(typeOf(b)!));
 
-    // Passo c): para cada arquivo permitido...
+    // Passo c): percorre TODOS os arquivos (sem parar no 20º achado, senão a
+    // nota mais relevante podia nem ser vista) e guarda, de cada um, as 3
+    // melhores linhas e quantas vezes o termo aparece.
+    const candidatos: { file: string; pontos: number; linhas: Achado[] }[] = [];
     for (const file of files) {
         // Um PDF corrompido não pode derrubar a busca inteira
         const sections = await readSearchableLines(file).catch(() => []);
-        let foundInFile = 0;
-        // Passo d): ...para cada linha (de cada página, se for PDF)...
-        lines: for (const { pagina, lines } of sections) {
+        const linhas: Achado[] = [];
+        let ocorrencias = 0;
+        for (const { pagina, lines } of sections) {
             for (const [index, line] of lines.entries()) {
-                if (!paraComparar(line).includes(needle)) continue;
-                // Passo e): achou! Passa a linha INTEIRA pelas proteções (PASSO
-                // 4.4) e só depois recorta o trecho em volta do termo. Nessa
-                // ordem, um segredo perto do corte é mascarado por inteiro, em
-                // vez de vazar pela metade sem o prefixo (sk-...) que o identifica.
-                const { text, alertas, segredos } = prepareUntrusted(line.trim());
-                results.push({ arquivo: relative(config.notesDir, file), linha: index + 1, pagina, trecho: janela(text, needle), alertas, segredos });
-                // Passo f): para no limite geral, para não mandar texto demais ao
-                // modelo, e no limite por arquivo, para variar as fontes.
-                if (results.length >= MAX_RESULTS) return results;
-                if (++foundInFile >= MAX_RESULTS_PER_FILE) break lines;
+                const comparavel = paraComparar(line);
+                if (!comparavel.includes(needle)) continue;
+                ocorrencias++;
+                linhas.push({ line, linha: index + 1, pagina, pontos: pontosDaLinha(line, comparavel, needle) });
+                // Mantém só as 3 melhores (empate: a que vem antes no arquivo).
+                if (linhas.length > MAX_RESULTS_PER_FILE) {
+                    linhas.sort((a, b) => b.pontos - a.pontos);
+                    linhas.pop();
+                }
             }
+        }
+        if (!linhas.length) continue;
+        // Passo d): a pontuação do arquivo. O termo no nome do arquivo vale mais
+        // (quem busca "embedding" quer a nota embeddings.md); depois, a melhor
+        // linha (título, palavra inteira) e quantas vezes o termo aparece (em
+        // logaritmo e com teto: repetir o termo 200 vezes não faz um arquivo
+        // ganhar sozinho).
+        // Por fim, o tipo: suas anotações valem mais que PDFs, e PDFs mais que
+        // código, que repete os mesmos nomes muitas vezes.
+        const noNome = paraComparar(basename(file)).includes(needle) ? PESO_NOME : 0;
+        const melhor = Math.max(...linhas.map(l => l.pontos));
+        candidatos.push({ file, pontos: noNome + melhor + Math.min(Math.log2(1 + ocorrencias), TETO_REPETICOES) + PESO_TIPO[typeOf(file)!], linhas });
+    }
+
+    // Passo e): mais pontos primeiro. O sort é estável: no empate, vale a ordem
+    // do passo b). Dentro do arquivo, as melhores linhas primeiro.
+    candidatos.sort((a, b) => b.pontos - a.pontos);
+    const results: Resultado[] = [];
+    for (const { file, linhas } of candidatos) {
+        linhas.sort((a, b) => b.pontos - a.pontos || (a.pagina ?? 0) - (b.pagina ?? 0) || a.linha - b.linha);
+        for (const { line, linha, pagina } of linhas) {
+            // Passo f): passa a linha INTEIRA pelas proteções (PASSO 4.4) e só
+            // depois recorta o trecho em volta do termo. Nessa ordem, um segredo
+            // perto do corte é mascarado por inteiro, em vez de vazar pela metade
+            // sem o prefixo (sk-...) que o identifica.
+            const { text, alertas, segredos } = prepareUntrusted(line.trim());
+            results.push({ arquivo: relative(config.notesDir, file), linha, pagina, trecho: janela(text, needle), alertas, segredos });
+            // Para no limite geral, para não mandar texto demais ao modelo.
+            if (results.length >= MAX_RESULTS) return results;
         }
     }
     return results;
+}
+
+// Uma linha em que o termo aparece. As proteções (PASSO 4.4) só rodam nas
+// linhas escolhidas, no passo f): são as únicas que vão para o modelo.
+type Achado = { line: string; linha: number; pagina?: number; pontos: number };
+
+// Pesos da pontuação. Medidos com a avaliação (tests/avaliacao.model.ts) e num
+// material de curso real: com qualquer combinação que use o nome do arquivo ou
+// o título, a avaliação acerta todos os "termo em vários"; o bônus de tipo
+// impede que código, que repete os termos dezenas de vezes, passe na frente
+// das anotações. Os valores exatos não foram afinados: o corpus é pequeno.
+const PESO_NOME = 3;
+const PESO_TITULO = 2;
+const PESO_PALAVRA_INTEIRA = 1;
+const PESO_TIPO: Record<Tipo, number> = { anotacoes: 2, pdf: 1, codigo: 0 };
+// Teto das repetições: log2(1 + 15) = 4, então a partir de 15 linhas com o
+// termo, repetir mais não soma. Sem o teto, código que repete um nome dezenas
+// de vezes passava na frente da anotação sobre o assunto.
+const TETO_REPETICOES = 4;
+
+// Pontos de uma linha: 1 por ter o termo, mais se for título Markdown (# ...)
+// e se o termo aparecer como palavra inteira ("git" em "git push", e não em
+// "digitar"). Letras acentuadas e números contam como parte da palavra.
+function pontosDaLinha(line: string, comparavel: string, needle: string): number {
+    let pontos = 1;
+    if (/^\s*#{1,6}\s/.test(line)) pontos += PESO_TITULO;
+    const letra = /[\p{L}\p{N}_]/u;
+    for (let i = comparavel.indexOf(needle); i !== -1; i = comparavel.indexOf(needle, i + 1)) {
+        if (!letra.test(comparavel[i - 1] ?? '') && !letra.test(comparavel[i + needle.length] ?? '')) {
+            pontos += PESO_PALAVRA_INTEIRA;
+            break;
+        }
+    }
+    return pontos;
 }
 
 // ----------------------------------------------------------------------------

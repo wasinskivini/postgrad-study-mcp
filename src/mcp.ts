@@ -28,7 +28,7 @@
  *   2.6  tool registrar_duvida
  *   2.7  tool marcar_aula_concluida
  *   2.8  tools ver_estudos e resolver_duvida
- *   2.9  resources estudos://progresso e estudos://duvidas
+ *   2.9  resources estudos://progresso, estudos://duvidas e estudos://indice
  *   2.10 prompts gerar_quiz e plano_de_revisao
  */
 import { readFileSync } from 'node:fs'
@@ -43,7 +43,7 @@ import {
     addDuvida, config, getDuvidas, getDuvidasNumeradas, getProgresso, listarArquivos, listarPastas, listarSubmodulos, listModules, MAX_ARQUIVOS_LISTADOS,
     markAulaConcluida, MAX_PDF_PAGES_PER_READ, readNote, resolverDuvida, resolverLinks, semCaminhos, TIPOS, type Tipo, encontrarPastas,
 } from "./service.ts";
-import { buscaHibrida } from "./semantic.ts";
+import { buscaHibrida, estadoDoIndice } from "./semantic.ts";
 import { detectInjection, sanitizeText, wrapUntrusted } from "./safety.ts";
 
 // ----------------------------------------------------------------------------
@@ -455,7 +455,7 @@ server.registerTool(
 )
 
 // ----------------------------------------------------------------------------
-// 2.9 — RESOURCES estudos://progresso e estudos://duvidas
+// 2.9 — RESOURCES estudos://progresso, estudos://duvidas e estudos://indice
 // ----------------------------------------------------------------------------
 // Resources são dados de leitura, identificados por URI. Diferente das tools,
 // quem costuma escolhê-los é o usuário ou o app (no VS Code: Add Context → MCP
@@ -492,6 +492,32 @@ server.registerResource(
             text: JSON.stringify(await getDuvidas(), null, 2),
         }]
     }))
+)
+
+// O estado da busca por significado: ligada ou não, progresso da indexação e o
+// último erro (ex.: sem internet para baixar o modelo na primeira vez). O erro
+// passa por semCaminhos antes do JSON, porque no Windows o JSON dobraria as
+// barras dos caminhos e a troca não os acharia.
+server.registerResource(
+    'estudos://indice',
+    'estudos://indice',
+    {
+        description: 'Estado da busca por significado: se está ligada, o progresso da indexação e o último erro',
+        mimeType: 'application/json',
+    },
+    async () => semCaminhoNoErro(async () => {
+        const estado = config.semanticSearch
+            ? estadoDoIndice()
+            : { ligada: false, comoLigar: 'SEMANTIC_SEARCH=true na configuração do servidor (veja "Busca por significado" no README)' }
+        if ('erro' in estado && estado.erro) estado.erro = semCaminhos(estado.erro)
+        return {
+            contents: [{
+                uri: 'estudos://indice',
+                mimeType: 'application/json',
+                text: JSON.stringify(estado, null, 2),
+            }]
+        }
+    })
 )
 
 // ----------------------------------------------------------------------------

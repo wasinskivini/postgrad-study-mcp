@@ -14,7 +14,7 @@
  */
 import { describe, it, after, before } from 'node:test'
 import assert from 'node:assert'
-import { cp, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Client } from '@modelcontextprotocol/sdk/client'
@@ -324,6 +324,15 @@ describe('Study Notes MCP', () => {
             // A resposta conta as aulas do módulo (a repetida não conta duas vezes).
             assert.strictEqual(repetida.content[0].text, 'Aula "05" concluída. modulo03: 1 aula(s) feitas.')
             assert.deepStrictEqual(await readJsonResource(client, 'estudos://progresso'), { modulo03: ['05'] })
+        })
+
+        it('should expose the semantic index state as a resource', async () => {
+            const { resources } = await client.listResources()
+            assert.deepStrictEqual(resources.map(r => r.uri).sort(), ['estudos://duvidas', 'estudos://indice', 'estudos://progresso'])
+            // Nos testes a busca por significado fica desligada: o resource explica como ligar.
+            const indice = await readJsonResource(client, 'estudos://indice')
+            assert.strictEqual(indice.ligada, false)
+            assert.match(indice.comoLigar, /SEMANTIC_SEARCH=true/)
         })
 
         it('should list doubts and progress as a tool', async () => {
@@ -819,6 +828,120 @@ describe('Study Notes MCP', () => {
                 resolver_duvida: false,
             })
         })
+    })
+})
+
+// A ordem da busca literal (PASSO 3.6): o mais relevante primeiro, não a
+// ordem das pastas. Pasta própria, para não mexer nos outros testes.
+describe('busca literal: ordem dos resultados', () => {
+    let client: Client
+    let root: string
+
+    before(async () => {
+        root = await mkdtemp(join(tmpdir(), 'study-notes-ordem-'))
+        const notas = join(root, 'notas')
+        await mkdir(join(notas, 'a-geral'), { recursive: true })
+        await mkdir(join(notas, 'z-temas'), { recursive: true })
+        // 25 arquivos que só citam o termo, em pastas que vêm ANTES na ordem
+        // alfabética: a busca antiga parava no 20º e nem via a nota certa.
+        for (let i = 0; i < 25; i++) await writeFile(join(notas, 'a-geral', `aula-${String(i).padStart(2, '0')}.md`), 'Nesta aula falamos de embedding de passagem.')
+        await writeFile(join(notas, 'z-temas', 'embeddings.md'), '# Embeddings\nVetores que representam o significado.')
+        // Código que repete o termo muitas vezes não passa na frente da anotação.
+        await writeFile(join(notas, 'a-geral', 'embedding_util.py'), Array(40).fill('embedding = embed(embedding)').join('\n'))
+        await writeFile(join(notas, 'z-temas', 'teclado.md'), 'Dicas para digitar mais rápido.')
+        await writeFile(join(notas, 'z-temas', 'versionamento.md'), 'Use git push depois do commit.')
+        client = await createTestClient(notas, join(root, 'data'))
+    })
+
+    after(async () => {
+        await client.close()
+        await rm(root, { recursive: true, force: true })
+    })
+
+    async function arquivos(consulta: string) {
+        const result = await callTool(client, 'buscar_material', { consulta })
+        return result.structuredContent.resultados.map((r: { arquivo: string }) => r.arquivo)
+    }
+
+    it('should put first the note named after the term, even after 25 other files', async () => {
+        const lista = await arquivos('embedding')
+        assert.strictEqual(lista[0], join('z-temas', 'embeddings.md'))
+        assert.ok(lista.indexOf(join('a-geral', 'embedding_util.py')) > 0, 'o código não vem em 1º lugar')
+    })
+
+    it('should prefer the term as a whole word', async () => {
+        assert.deepStrictEqual(await arquivos('git'), [join('z-temas', 'versionamento.md'), join('z-temas', 'teclado.md')])
+    })
+})
+
+// O texto dos PDFs salvo em DATA_DIR (PASSO 3.4): a próxima conversa (um
+// servidor novo) não extrai tudo de novo.
+describe('cache de PDFs em disco', () => {
+    let root: string
+    let notas: string
+    let dados: string
+    const cacheFile = () => join(dados, 'cache-pdf.json')
+    const esperarGravacao = () => new Promise(resolve => setTimeout(resolve, 2500))
+
+    before(async () => {
+        root = await mkdtemp(join(tmpdir(), 'study-notes-cache-pdf-'))
+        notas = join(root, 'notas')
+        dados = join(root, 'data')
+        await mkdir(join(notas, 'modulo01'), { recursive: true })
+        await writeFile(join(notas, 'modulo01', 'aula.pdf'), buildPdf([['Pagina um sobre transformers']]))
+    })
+
+    after(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    async function buscarEmServidorNovo(consulta: string) {
+        const client = await createTestClient(notas, dados)
+        try {
+            return await callTool(client, 'buscar_material', { consulta })
+        } finally {
+            await esperarGravacao()
+            await client.close()
+        }
+    }
+
+    it('should save the extracted text with relative paths and private permissions', async () => {
+        const result = await buscarEmServidorNovo('transformers')
+        assert.match(result.content[0].text, /aula\.pdf/)
+        const salvo = JSON.parse(await readFile(cacheFile(), 'utf8'))
+        assert.deepStrictEqual(Object.keys(salvo.arquivos), [join('modulo01', 'aula.pdf')])
+        assert.deepStrictEqual(salvo.arquivos[join('modulo01', 'aula.pdf')].pages, ['Pagina um sobre transformers'])
+        if (process.platform !== 'win32') assert.strictEqual((await stat(cacheFile())).mode & 0o777, 0o600)
+    })
+
+    it('should reuse the saved text in a new server instead of extracting again', async () => {
+        // Troca o texto salvo, mantendo data e tamanho: se a busca achar o texto
+        // trocado, é porque usou o cache, e não o PDF.
+        const salvo = JSON.parse(await readFile(cacheFile(), 'utf8'))
+        salvo.arquivos[join('modulo01', 'aula.pdf')].pages = ['texto que so existe no cache']
+        await writeFile(cacheFile(), JSON.stringify(salvo))
+        const result = await buscarEmServidorNovo('so existe no cache')
+        assert.match(result.content[0].text, /aula\.pdf/)
+    })
+
+    it('should extract again when the PDF changes', async () => {
+        await writeFile(join(notas, 'modulo01', 'aula.pdf'), buildPdf([['Conteudo novo sobre atencao']]))
+        const result = await buscarEmServidorNovo('atencao')
+        assert.match(result.content[0].text, /aula\.pdf/)
+        const salvo = JSON.parse(await readFile(cacheFile(), 'utf8'))
+        assert.deepStrictEqual(salvo.arquivos[join('modulo01', 'aula.pdf')].pages, ['Conteudo novo sobre atencao'])
+    })
+
+    it('should ignore a corrupted cache and drop deleted PDFs', async () => {
+        await writeFile(cacheFile(), '{ isto não é JSON')
+        await writeFile(join(notas, 'modulo01', 'outra.pdf'), buildPdf([['Segundo PDF sobre atencao']]))
+        const result = await buscarEmServidorNovo('atencao')
+        assert.match(result.content[0].text, /outra\.pdf/)
+        await rm(join(notas, 'modulo01', 'aula.pdf'))
+        await writeFile(join(notas, 'modulo01', 'terceiro.pdf'), buildPdf([['Mais um']]))
+        await buscarEmServidorNovo('Mais um')
+        const salvo = JSON.parse(await readFile(cacheFile(), 'utf8'))
+        assert.deepStrictEqual(Object.keys(salvo.arquivos).sort(), [join('modulo01', 'outra.pdf'), join('modulo01', 'terceiro.pdf')])
     })
 })
 

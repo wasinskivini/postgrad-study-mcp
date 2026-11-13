@@ -18,7 +18,7 @@ As variáveis vão no bloco `"env"` do `mcp.json` (veja o passo 3 do [README](..
 | Variável | Padrão | Uso |
 |---|---|---|
 | `NOTES_DIR` | `~/Documents` | Pasta raiz do material (cada subpasta é um módulo). Use caminho absoluto |
-| `DATA_DIR` | `~/.study-notes-mcp` | Onde ficam `duvidas.json`, `progresso.json` e o índice da busca por significado |
+| `DATA_DIR` | `~/.study-notes-mcp` | Onde ficam `duvidas.json`, `progresso.json`, o texto extraído dos PDFs (`cache-pdf.json`) e o índice da busca por significado |
 | `INCLUDE_PDF` | `true` | `false` desliga totalmente a busca e a leitura de PDFs |
 | `SEMANTIC_SEARCH` | `false` | `true` liga a [busca por significado](busca-por-significado.md) |
 | `MODELS_DIR` | `DATA_DIR/modelos` | Onde o modelo de embeddings fica guardado depois do download |
@@ -33,6 +33,13 @@ As variáveis vão no bloco `"env"` do `mcp.json` (veja o passo 3 do [README](..
 
 Qualquer outra extensão nunca é lida, assim como arquivos e pastas ocultos (`.env`, `.git`) e pastas como `node_modules`, `dist` e `venv`. Pastas sem nenhum arquivo lido (por exemplo, só com `.json` ou `.sh`) não aparecem como módulo nem nas sugestões do quiz. Arquivos novos aparecem na próxima busca, sem reiniciar o servidor.
 
+### Links simbólicos (atalhos)
+
+A busca, a lista de arquivos e a busca por significado **ignoram links simbólicos**, de arquivo ou de pasta. É de propósito: em material de curso, links costumam ser cópias do mesmo arquivo (`AGENTS.md`, `.cursorrules` e `.github/copilot-instructions.md` apontando para o `CLAUDE.md`), e segui-los repetiria os resultados. Também evita laços, quando um link aponta para uma pasta acima dele.
+
+- **Ler um link pelo caminho funciona**, desde que o destino real fique dentro de `NOTES_DIR`. Um link que aponta para fora é bloqueado, como qualquer caminho fora da pasta.
+- **Se você colocou na pasta de estudos um link para uma pasta de curso que está em outro lugar**, o conteúdo dela não aparece. Aponte o `NOTES_DIR` para uma pasta que contenha as duas, ou mova a pasta do curso para dentro da pasta de estudos.
+
 ## Filtrando a busca
 
 Não é preciso passar parâmetros: basta pedir no chat e o modelo preenche `tipos` e `modulo` sozinho.
@@ -46,7 +53,7 @@ O filtro de módulo aceita qualquer subpasta, não só as de primeiro nível: nu
 
 A busca por texto exato não diferencia maiúsculas nem acentos: `funcao` acha "função", e `FUNÇÃO` acha "funcao". O trecho devolvido mantém o texto original, com os acentos.
 
-Sem filtro, a busca olha todos os tipos, nesta ordem: **anotações, PDFs e por último código**. Ela devolve no máximo 20 resultados, até 3 por arquivo, para um arquivo só não ocupar a lista inteira. Se o limite for atingido, a resposta avisa: aí vale pedir "só nos PDFs" ou "só no módulo X".
+Sem filtro, a busca olha todos os tipos. Os resultados vêm **do mais relevante para o menos**: conta mais o termo no **nome do arquivo** (buscar "docker" traz primeiro `docker.md`), num **título** (`# ...`), como **palavra inteira** ("git" em `git push`, não em "digitar") e quantas vezes ele aparece. Com pontuação parecida, suas **anotações** vêm antes dos PDFs, e os PDFs antes do código, que repete os mesmos nomes muitas vezes. A busca devolve no máximo 20 resultados, até 3 por arquivo (as linhas mais relevantes de cada um), para um arquivo só não ocupar a lista inteira. Se o limite for atingido, a resposta avisa: aí vale pedir "só nos PDFs" ou "só no módulo X".
 
 ## Ignorando arquivos e pastas (`.studynotesignore`)
 
@@ -101,7 +108,7 @@ O [Obsidian](https://obsidian.md) é um app de anotações que guarda cada nota 
 
 ## PDFs e tokens
 
-O texto dos PDFs é extraído na sua máquina e fica em cache enquanto o arquivo não muda. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_material` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas. Se notar consumo alto, use o filtro de tipos ou `INCLUDE_PDF=false`.
+O texto dos PDFs é extraído na sua máquina e fica guardado em `DATA_DIR/cache-pdf.json` enquanto o arquivo não muda: a primeira busca de cada conversa não precisa extrair tudo de novo (num material com 57 PDFs, de 1,2 s para 0,4 s). Apagar esse arquivo é seguro: ele é refeito na próxima busca. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_material` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas. Se notar consumo alto, use o filtro de tipos ou `INCLUDE_PDF=false`.
 
 ## Todos os projetos ou só um?
 

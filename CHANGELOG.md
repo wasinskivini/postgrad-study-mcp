@@ -2,6 +2,19 @@
 
 As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/): a versão maior muda quando algo deixa de funcionar como antes (nome de tool, parâmetro, formato dos dados salvos).
 
+## [1.2.0] - 2026-11-13
+
+A terceira parte da revisão de código externa: busca mais relevante, PDFs mais rápidos e o estado do índice visível. Cada mudança foi medida num material de curso real.
+
+### Adicionado
+- Resource `estudos://indice`: o estado da busca por significado (ligada ou não, progresso da indexação, arquivos e trechos no índice e o último erro), sem precisar fazer uma busca.
+
+### Alterado
+- **O texto dos PDFs fica salvo em `DATA_DIR/cache-pdf.json`** (permissão 600, caminhos relativos): a primeira busca de cada conversa não extrai todos os PDFs de novo. Num material com 57 PDFs, de 1,2 s para 0,4 s; o arquivo ocupa ~270 KB. PDFs alterados são extraídos de novo, e os apagados saem do cache.
+- **A busca por texto exato ordena por relevância**, e não mais pela ordem das pastas: conta o termo no nome do arquivo, em título (`# ...`), como palavra inteira e o número de repetições (com teto); com pontuação parecida, anotações vêm antes de PDFs, e PDFs antes de código. Num material de curso real, buscas como "docker", "MCP" e "embedding" passaram a trazer primeiro a nota sobre o assunto, em vez dos mesmos três READMEs para qualquer termo. Na avaliação, com 5 perguntas novas de termos que aparecem em vários arquivos, a literal foi de 3/5 para 5/5 no 1º lugar, e a híbrida (a da tool) de 20/25 para 22/25 no total: a ordem antiga estava atrapalhando a fusão das duas buscas. Custo: a busca agora percorre todos os arquivos antes de responder (no material medido, de ~0,12 s para ~0,4 s).
+- Documentado o comportamento com links simbólicos: a busca os ignora (evita resultados repetidos), e a leitura direta só aceita os que apontam para dentro da pasta de estudos.
+- O aviso de índice em construção diz "preparando" em vez de "0 de 0 arquivos" enquanto a lista de arquivos ainda está sendo montada.
+
 ## [1.1.1] - 2026-11-13
 
 Manutenção para o projeto seguir estável com pouca intervenção.
@@ -79,6 +92,7 @@ Primeira versão publicada.
 ### Clientes testados
 - VS Code com GitHub Copilot, Claude Code e Codex. Detalhes em [docs/clientes.md](docs/clientes.md).
 
+[1.2.0]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.2.0
 [1.1.1]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.1.1
 [1.1.0]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.1.0
 [1.0.2]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.2

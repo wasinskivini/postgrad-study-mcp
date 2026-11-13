@@ -101,6 +101,7 @@ Os prompts prontos aparecem digitando `/` no chat: `/mcp.study-notes-mcp.gerar_q
 | 🔧 Tool | `marcar_aula_concluida` | Marca uma aula como concluída |
 | 🔧 Tool | `ver_estudos` | Mostra as dúvidas pendentes e as aulas concluídas |
 | 📄 Resource | `estudos://duvidas`, `estudos://progresso` | Os mesmos dados em JSON, para anexar ao chat |
+| 📄 Resource | `estudos://indice` | Estado da busca por significado: se está ligada, o progresso da indexação e o último erro |
 | 💬 Prompt | `gerar_quiz`, `plano_de_revisao` | Quiz sobre um módulo e plano de revisão da semana |
 
 ---

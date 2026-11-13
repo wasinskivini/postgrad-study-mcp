@@ -30,6 +30,31 @@
     "tipo": "nome exato"
   },
   {
+    "pergunta": "embedding",
+    "esperado": "modulo02/embeddings.md",
+    "tipo": "termo em vários"
+  },
+  {
+    "pergunta": "Git",
+    "esperado": "modulo04/git-fluxo.md",
+    "tipo": "termo em vários"
+  },
+  {
+    "pergunta": "contexto",
+    "esperado": "modulo01/tokens-e-contexto.md",
+    "tipo": "termo em vários"
+  },
+  {
+    "pergunta": "vetor",
+    "esperado": "modulo02/banco-vetorial.md",
+    "tipo": "termo em vários"
+  },
+  {
+    "pergunta": "servidor",
+    "esperado": "modulo03/seguranca.md",
+    "tipo": "termo em vários"
+  },
+  {
     "pergunta": "como representar o sentido de um texto como números?",
     "esperado": "modulo02/embeddings.md",
     "tipo": "outras palavras"
