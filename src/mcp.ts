@@ -175,7 +175,7 @@ server.registerTool(
         annotations: READ_ONLY,
         inputSchema: {
             // .pipe exige no mínimo 2 caracteres DEPOIS do trim feito pelo shortText.
-            consulta: shortText(200).pipe(z.string().min(2)).describe("Nome exato ou pergunta em linguagem natural. A parte literal não diferencia maiúsculas/minúsculas."),
+            consulta: shortText(200).pipe(z.string().min(2)).describe("Nome exato ou pergunta em linguagem natural. A parte literal não diferencia maiúsculas/minúsculas nem acentos."),
             modulo: shortText(150).optional().describe("Pasta do módulo para restringir a busca, como retornado por listar_modulos"),
             // Filtro opcional. O usuário não passa isso à mão: ele pede "só nos
             // PDFs" no chat e o modelo preenche, guiado por esta descrição.

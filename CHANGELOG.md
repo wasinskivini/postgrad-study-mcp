@@ -2,6 +2,11 @@
 
 As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/): a versão maior muda quando algo deixa de funcionar como antes (nome de tool, parâmetro, formato dos dados salvos).
 
+## [Não publicado]
+
+### Alterado
+- A busca por texto exato não diferencia mais acentos: `funcao` acha "função", e `ativação` acha também onde está escrito "ativacao". O trecho devolvido mantém os acentos originais.
+
 ## [1.0.2] - 2026-11-13
 
 Correções vindas de uma revisão de código externa, todas reproduzidas antes de corrigir e cobertas por teste.

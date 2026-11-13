@@ -7,7 +7,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { dividirEmTrechos, fundir, similaridade } from '../src/semantic.ts'
-import { config, janela, parsePageRange, semCaminhos, semFrontmatter, tentarDeNovo } from '../src/service.ts'
+import { config, janela, paraComparar, parsePageRange, semCaminhos, semFrontmatter, tentarDeNovo } from '../src/service.ts'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -191,6 +191,21 @@ describe('robustez', () => {
         assert.throws(() => parsePageRange('abc', 10), /Páginas inválidas/)
         assert.throws(() => parsePageRange('2-x', 10), /Páginas inválidas/)
         assert.deepStrictEqual(parsePageRange('2-4', 10), [2, 4])
+    })
+})
+
+// Busca literal sem acentos (PASSO 3.6).
+describe('busca literal: acentos', () => {
+    it('should compare without case or accents', () => {
+        assert.strictEqual(paraComparar('Função de ATIVAÇÃO'), 'funcao de ativacao')
+        assert.strictEqual(paraComparar('registerTool'), 'registertool')
+        assert.ok(paraComparar('A função de ativação é importante').includes(paraComparar('funcao')))
+    })
+
+    it('should center the snippet on an accented term found without accents', () => {
+        const linha = 'texto sem relação '.repeat(20) + 'a função de ATIVAÇÃO aparece aqui ' + 'mais texto '.repeat(20)
+        const trecho = janela(linha, paraComparar('ativacao'))
+        assert.ok(trecho.includes('ATIVAÇÃO'), trecho)
     })
 })
 
