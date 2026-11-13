@@ -59,6 +59,7 @@ Tudo que as tools devolvem é enviado ao modelo do seu cliente MCP. Por isso o s
 **Dados e modelo**
 - Gravações em `DATA_DIR` entram numa fila por arquivo: chamadas simultâneas da mesma tool (comuns quando o modelo registra várias dúvidas de uma vez) não perdem dados. Com o servidor aberto em **dois clientes ao mesmo tempo**, duas gravações no mesmo instante ainda podem, raramente, sobrescrever uma à outra
 - Tools anotadas com `readOnlyHint`, para o cliente distinguir leitura de escrita. As de escrita só alteram os JSONs em `DATA_DIR`, criados com permissão `600`
+- O texto extraído dos PDFs fica em `DATA_DIR/cache-pdf.json`, com permissão `600`. É uma cópia local do que os PDFs já contêm (sem segredos redigidos, como o próprio PDF), nunca sai do computador e usa caminhos relativos à pasta de estudos, sem o nome do seu usuário
 - Busca por significado: o modelo é baixado de um commit fixo do Hugging Face (uma versão nova publicada lá não é baixada sem querer), e o índice salvo em `DATA_DIR` guarda o texto já com segredos redigidos, com permissão `600`
 
 > Essas proteções valem para o que passa por este servidor. O Copilot tem ferramentas próprias (ler arquivos, terminal) que não passam por aqui. Para controlar o que elas podem fazer, use as configurações de aprovação de tools do VS Code.

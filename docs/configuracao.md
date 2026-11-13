@@ -18,7 +18,7 @@ As variáveis vão no bloco `"env"` do `mcp.json` (veja o passo 3 do [README](..
 | Variável | Padrão | Uso |
 |---|---|---|
 | `NOTES_DIR` | `~/Documents` | Pasta raiz do material (cada subpasta é um módulo). Use caminho absoluto |
-| `DATA_DIR` | `~/.study-notes-mcp` | Onde ficam `duvidas.json`, `progresso.json` e o índice da busca por significado |
+| `DATA_DIR` | `~/.study-notes-mcp` | Onde ficam `duvidas.json`, `progresso.json`, o texto extraído dos PDFs (`cache-pdf.json`) e o índice da busca por significado |
 | `INCLUDE_PDF` | `true` | `false` desliga totalmente a busca e a leitura de PDFs |
 | `SEMANTIC_SEARCH` | `false` | `true` liga a [busca por significado](busca-por-significado.md) |
 | `MODELS_DIR` | `DATA_DIR/modelos` | Onde o modelo de embeddings fica guardado depois do download |
@@ -108,7 +108,7 @@ O [Obsidian](https://obsidian.md) é um app de anotações que guarda cada nota 
 
 ## PDFs e tokens
 
-O texto dos PDFs é extraído na sua máquina e fica em cache enquanto o arquivo não muda. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_material` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas. Se notar consumo alto, use o filtro de tipos ou `INCLUDE_PDF=false`.
+O texto dos PDFs é extraído na sua máquina e fica guardado em `DATA_DIR/cache-pdf.json` enquanto o arquivo não muda: a primeira busca de cada conversa não precisa extrair tudo de novo (num material com 57 PDFs, de 1,2 s para 0,4 s). Apagar esse arquivo é seguro: ele é refeito na próxima busca. Só vai para o modelo o que a tool devolve: os trechos da busca (até 20 × 200 caracteres) ou as páginas pedidas em `ler_material` (até 5, ~2 mil tokens). O modelo deve buscar primeiro e depois ler só as páginas indicadas. Se notar consumo alto, use o filtro de tipos ou `INCLUDE_PDF=false`.
 
 ## Todos os projetos ou só um?
 

@@ -14,7 +14,7 @@
  */
 import { describe, it, after, before } from 'node:test'
 import assert from 'node:assert'
-import { cp, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Client } from '@modelcontextprotocol/sdk/client'
@@ -871,6 +871,77 @@ describe('busca literal: ordem dos resultados', () => {
 
     it('should prefer the term as a whole word', async () => {
         assert.deepStrictEqual(await arquivos('git'), [join('z-temas', 'versionamento.md'), join('z-temas', 'teclado.md')])
+    })
+})
+
+// O texto dos PDFs salvo em DATA_DIR (PASSO 3.4): a próxima conversa (um
+// servidor novo) não extrai tudo de novo.
+describe('cache de PDFs em disco', () => {
+    let root: string
+    let notas: string
+    let dados: string
+    const cacheFile = () => join(dados, 'cache-pdf.json')
+    const esperarGravacao = () => new Promise(resolve => setTimeout(resolve, 2500))
+
+    before(async () => {
+        root = await mkdtemp(join(tmpdir(), 'study-notes-cache-pdf-'))
+        notas = join(root, 'notas')
+        dados = join(root, 'data')
+        await mkdir(join(notas, 'modulo01'), { recursive: true })
+        await writeFile(join(notas, 'modulo01', 'aula.pdf'), buildPdf([['Pagina um sobre transformers']]))
+    })
+
+    after(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    async function buscarEmServidorNovo(consulta: string) {
+        const client = await createTestClient(notas, dados)
+        try {
+            return await callTool(client, 'buscar_material', { consulta })
+        } finally {
+            await esperarGravacao()
+            await client.close()
+        }
+    }
+
+    it('should save the extracted text with relative paths and private permissions', async () => {
+        const result = await buscarEmServidorNovo('transformers')
+        assert.match(result.content[0].text, /aula\.pdf/)
+        const salvo = JSON.parse(await readFile(cacheFile(), 'utf8'))
+        assert.deepStrictEqual(Object.keys(salvo.arquivos), [join('modulo01', 'aula.pdf')])
+        assert.deepStrictEqual(salvo.arquivos[join('modulo01', 'aula.pdf')].pages, ['Pagina um sobre transformers'])
+        if (process.platform !== 'win32') assert.strictEqual((await stat(cacheFile())).mode & 0o777, 0o600)
+    })
+
+    it('should reuse the saved text in a new server instead of extracting again', async () => {
+        // Troca o texto salvo, mantendo data e tamanho: se a busca achar o texto
+        // trocado, é porque usou o cache, e não o PDF.
+        const salvo = JSON.parse(await readFile(cacheFile(), 'utf8'))
+        salvo.arquivos[join('modulo01', 'aula.pdf')].pages = ['texto que so existe no cache']
+        await writeFile(cacheFile(), JSON.stringify(salvo))
+        const result = await buscarEmServidorNovo('so existe no cache')
+        assert.match(result.content[0].text, /aula\.pdf/)
+    })
+
+    it('should extract again when the PDF changes', async () => {
+        await writeFile(join(notas, 'modulo01', 'aula.pdf'), buildPdf([['Conteudo novo sobre atencao']]))
+        const result = await buscarEmServidorNovo('atencao')
+        assert.match(result.content[0].text, /aula\.pdf/)
+        const salvo = JSON.parse(await readFile(cacheFile(), 'utf8'))
+        assert.deepStrictEqual(salvo.arquivos[join('modulo01', 'aula.pdf')].pages, ['Conteudo novo sobre atencao'])
+    })
+
+    it('should ignore a corrupted cache and drop deleted PDFs', async () => {
+        await writeFile(cacheFile(), '{ isto não é JSON')
+        await writeFile(join(notas, 'modulo01', 'outra.pdf'), buildPdf([['Segundo PDF sobre atencao']]))
+        const result = await buscarEmServidorNovo('atencao')
+        assert.match(result.content[0].text, /outra\.pdf/)
+        await rm(join(notas, 'modulo01', 'aula.pdf'))
+        await writeFile(join(notas, 'modulo01', 'terceiro.pdf'), buildPdf([['Mais um']]))
+        await buscarEmServidorNovo('Mais um')
+        const salvo = JSON.parse(await readFile(cacheFile(), 'utf8'))
+        assert.deepStrictEqual(Object.keys(salvo.arquivos).sort(), [join('modulo01', 'outra.pdf'), join('modulo01', 'terceiro.pdf')])
     })
 })
 

@@ -226,18 +226,68 @@ export async function carregarExclusao(): Promise<Exclusao> {
 // 3.4 — PDFs: EXTRAÇÃO COM CACHE
 // ----------------------------------------------------------------------------
 // Texto por página; extraído uma vez e reaproveitado enquanto o arquivo não mudar
-// A chave é o caminho; mtimeMs (data de modificação) detecta se o PDF mudou.
-// O cache vive enquanto o processo vive (o VS Code reinicia o servidor a cada
-// conversa nova, então na prática ele vale durante uma conversa).
-const pdfCache = new Map<string, { mtimeMs: number; pages: string[] }>();
+// (mesma data de modificação e mesmo tamanho). Extrair é a parte lenta: num
+// material com 57 PDFs, ~0,8 s a cada servidor novo, e o VS Code inicia um
+// servidor por conversa. Por isso o texto também fica salvo em
+// DATA_DIR/cache-pdf.json, e a primeira busca de cada conversa o reaproveita.
+// Em memória a chave é o caminho completo; no disco, o caminho relativo a
+// NOTES_DIR (o arquivo salvo não leva o nome do seu usuário).
+type PdfExtraido = { mtimeMs: number; size: number; pages: string[] };
+const pdfCache = new Map<string, PdfExtraido>();
+const PDF_CACHE_FILE = 'cache-pdf.json';
+// Sobe quando a forma de extrair mudar: um cache de outra versão é ignorado.
+const PDF_CACHE_VERSION = 1;
+let cacheEmDisco: Promise<void> | undefined;
+let gravacaoAgendada: ReturnType<typeof setTimeout> | undefined;
+
+// Lê o cache salvo uma vez por processo. Sem arquivo (primeira vez), de outra
+// versão ou corrompido: começa vazio, e os PDFs são extraídos de novo.
+function carregarCachePdf(): Promise<void> {
+    cacheEmDisco ??= (async () => {
+        try {
+            const salvo = JSON.parse(await readFile(join(config.dataDir, PDF_CACHE_FILE), 'utf8'));
+            if (salvo?.versao !== PDF_CACHE_VERSION) return;
+            for (const [arquivo, dados] of Object.entries<PdfExtraido>(salvo.arquivos ?? {})) {
+                const file = join(config.notesDir, arquivo);
+                if (isInside(config.notesDir, file) && Array.isArray(dados?.pages) && !pdfCache.has(file)) pdfCache.set(file, dados);
+            }
+        } catch {
+            // Sem cache salvo: segue sem ele.
+        }
+    })();
+    return cacheEmDisco;
+}
+
+// Grava o cache um segundo depois da última extração: uma busca que extrai 50
+// PDFs grava uma vez só. unref: o temporizador não segura o servidor aberto.
+// PDFs apagados saem do cache aqui. Falhar ao gravar não atrapalha a busca.
+function agendarGravacaoCachePdf(): void {
+    if (gravacaoAgendada) return;
+    gravacaoAgendada = setTimeout(async () => {
+        gravacaoAgendada = undefined;
+        try {
+            const arquivos: Record<string, PdfExtraido> = {};
+            for (const [file, dados] of pdfCache) {
+                if (!isInside(config.notesDir, file)) continue;
+                if (!(await stat(file).catch(() => undefined))) { pdfCache.delete(file); continue; }
+                arquivos[relative(config.notesDir, file)] = dados;
+            }
+            await gravarAtomico(join(config.dataDir, PDF_CACHE_FILE), JSON.stringify({ versao: PDF_CACHE_VERSION, arquivos }));
+        } catch (error) {
+            console.error('Não foi possível salvar o cache de PDFs:', semCaminhos(error instanceof Error ? error.message : String(error)));
+        }
+    }, 1000);
+    gravacaoAgendada.unref();
+}
 
 // Texto de cada página do PDF. Usa o cache enquanto o arquivo não mudar e recusa
 // PDFs grandes demais (limite MAX_PDF_BYTES).
 async function readPdfPages(file: string): Promise<string[]> {
     const info = await stat(file);
     if (info.size > MAX_PDF_BYTES) throw new Error(`PDF grande demais (${info.size} bytes, limite ${MAX_PDF_BYTES})`);
+    await carregarCachePdf();
     const cached = pdfCache.get(file);
-    if (cached?.mtimeMs === info.mtimeMs) return cached.pages;
+    if (cached?.mtimeMs === info.mtimeMs && cached.size === info.size) return cached.pages;
 
     // verbosity 0: o pdf.js não pode escrever avisos no stdout, que é o canal do MCP
     // (ver PASSO 1.1: qualquer texto extra no stdout corrompe o protocolo).
@@ -245,7 +295,8 @@ async function readPdfPages(file: string): Promise<string[]> {
     try {
         // mergePages: false → um texto por página, para podermos citar "p. N".
         const { text } = await extractText(pdf, { mergePages: false });
-        pdfCache.set(file, { mtimeMs: info.mtimeMs, pages: text });
+        pdfCache.set(file, { mtimeMs: info.mtimeMs, size: info.size, pages: text });
+        agendarGravacaoCachePdf();
         return text;
     } finally {
         // Libera a memória do documento, mesmo se a extração falhar.
