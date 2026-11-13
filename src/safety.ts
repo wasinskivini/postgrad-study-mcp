@@ -101,14 +101,26 @@ function pareceSegredo(valor: string): boolean {
 // Bloquear daria falso positivo com material que FALA sobre prompt injection
 // (como as próprias aulas do curso).
 const INJECTION_PATTERNS: [RegExp, string][] = [
-    [/ignore\s+(?:all\s+|any\s+)?(?:the\s+)?(?:previous|prior|above|earlier)\s+(?:instructions|prompts?|rules)/i, 'pede para ignorar instruções anteriores'],
-    [/ignor[ea]r?\s+(?:todas\s+)?(?:as\s+)?(?:instru[çc][õo]es|regras)\s+(?:anteriores|acima)/i, 'pede para ignorar instruções anteriores'],
+    // Algumas palavras podem ficar entre o verbo e "anteriores": "ignore the
+    // above and...", "Ignore suas instruções anteriores" e "Desconsidere o que
+    // foi dito antes" escapavam da versão mais rígida. Mas o objeto tem de ser
+    // uma instrução: "posso ignorar o aviso acima?" é uma dúvida legítima, e
+    // registrar_duvida recusa texto que dispara estes padrões.
+    [/\bignore\s+(?:\w+\s+){0,3}(?:previous|prior|above|earlier)(?:\s+(?:instructions?|prompts?|rules|messages?|directions)\b|\s+(?:and|then)\b|\s*[.,;:!"']|\s*$)/i, 'pede para ignorar instruções anteriores'],
+    [/\b(?:ignore|ignorar|desconsidere|desconsiderar|esque[çc]a)\s+(?:\S+\s+){0,3}?(?:instru[çc][õo]es|regras|ordens|dito|disse|falado|prompts?|tudo|mensagens?)\s+(?:\S+\s+){0,2}?(?:antes|anteriores?|acima)\b/i, 'pede para ignorar instruções anteriores'],
     [/(?:disregard|forget)\s+(?:all\s+|everything\s+)?(?:previous|prior|above|your)/i, 'pede para desconsiderar instruções'],
     [/(?:desconsider[ea]r?|esque[çc]a)\s+(?:todas\s+)?(?:as\s+)?(?:instru[çc][õo]es|regras|tudo)/i, 'pede para desconsiderar instruções'],
     [/\byou\s+are\s+now\b|\bvoc[êe]\s+agora\s+[ée]\b|\bfinja\s+que\s+voc[êe]\b|\bpretend\s+(?:to\s+be|you\s+are)\b/i, 'tenta mudar o papel do assistente'],
     [/<\/?\s*(?:system|assistant|instructions?|im_start|im_end)\s*>|\[\/?(?:INST|SYSTEM)\]/i, 'contém marcadores de mensagens de sistema'],
     [/\b(?:new|updated)\s+instructions?\s*:|\bnovas?\s+instru[çc][õo]es?\s*:/i, 'declara "novas instruções"'],
     [/(?:do\s+not|don'?t|n[ãa]o)\s+(?:tell|inform|mention|conte|informe|mencione)\s+(?:the\s+|ao\s+|o\s+)?(?:user|usu[áa]rio)/i, 'pede para esconder algo do usuário'],
+    // Pedir o prompt de sistema. (Um "System:" no começo da linha não entra: num
+    // material de curso de IA, ele aparece em 141 linhas de exemplos legítimos.)
+    [/\b(?:reveal|show|print|output|revele|mostre|imprima)\s+(?:\w+\s+){0,2}(?:system\s+prompt|prompt\s+(?:do|de)\s+sistema|hidden\s+instructions|instru[çc][õo]es\s+(?:ocultas|internas))/i, 'pede o prompt de sistema'],
+    // O ataque mais direto contra este servidor: mandar chamar uma das tools dele.
+    [/\b(?:execute|chame|call|invoke|rode|use)\s+(?:a\s+|the\s+)?(?:tool\s+|ferramenta\s+)?(?:registrar_duvida|resolver_duvida|marcar_aula_concluida|ler_material|buscar_material|listar_arquivos|listar_modulos|ver_estudos)\b/i, 'manda o assistente chamar uma tool'],
+    // Pedir para expor o .env (o ".env.example" de tutoriais não conta).
+    [/\b(?:output|print|reveal|send|leak|envie|revele|vaze|imprima|mostre)\b[^.\n]{0,40}\.env\b(?!\.)/i, 'pede para expor o .env'],
 ];
 
 // ----------------------------------------------------------------------------
