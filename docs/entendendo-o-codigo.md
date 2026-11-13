@@ -48,6 +48,7 @@ Copilot ── tools/call buscar_material {consulta:"RAG", tipos:["pdf"]} ──
                                                                         PASSO 3.9    └ módulo dentro da pasta?
                                                                         PASSO 3.5    └ lista os arquivos permitidos (3.3)
                                                                         PASSO 3.4    └ extrai o texto dos PDFs (com cache)
+                                                                        PASSO 3.6    └ pontua e ordena (nome, título, palavra inteira, tipo)
                                                                         PASSO 4.4    └ cada trecho: invisíveis, alertas, segredos
                                                                         PASSO 4.5  delimita como <dados_nao_confiaveis>
 Copilot ◄──────────────────── resultado (texto + structuredContent) ──  PASSO 1.1  sai pelo stdout

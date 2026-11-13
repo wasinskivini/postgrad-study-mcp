@@ -13,8 +13,10 @@
  *   semântica → só o significado (PASSO 6.5)
  *   híbrida   → as duas juntas (PASSO 6.6), a que a tool buscar_material usa
  *
- * As perguntas são de três tipos: nome exato (onde a literal brilha), outras
- * palavras e outro idioma (onde a semântica brilha). Se a híbrida não ganhar de
+ * As perguntas são de quatro tipos: nome exato (onde a literal brilha), termo
+ * em vários arquivos (onde conta a ORDEM da literal: o esperado é sempre a nota
+ * cujo título ou nome é o termo), outras palavras e outro idioma (onde a
+ * semântica brilha). Se a híbrida não ganhar de
  * nenhuma das duas sozinha, juntá-las não valeu a pena.
  *
  * Roda com npm run test:semantic: usa o modelo de verdade (~145 MB na primeira vez).

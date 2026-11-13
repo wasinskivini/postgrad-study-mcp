@@ -53,7 +53,7 @@ O filtro de módulo aceita qualquer subpasta, não só as de primeiro nível: nu
 
 A busca por texto exato não diferencia maiúsculas nem acentos: `funcao` acha "função", e `FUNÇÃO` acha "funcao". O trecho devolvido mantém o texto original, com os acentos.
 
-Sem filtro, a busca olha todos os tipos, nesta ordem: **anotações, PDFs e por último código**. Ela devolve no máximo 20 resultados, até 3 por arquivo, para um arquivo só não ocupar a lista inteira. Se o limite for atingido, a resposta avisa: aí vale pedir "só nos PDFs" ou "só no módulo X".
+Sem filtro, a busca olha todos os tipos. Os resultados vêm **do mais relevante para o menos**: conta mais o termo no **nome do arquivo** (buscar "docker" traz primeiro `docker.md`), num **título** (`# ...`), como **palavra inteira** ("git" em `git push`, não em "digitar") e quantas vezes ele aparece. Com pontuação parecida, suas **anotações** vêm antes dos PDFs, e os PDFs antes do código, que repete os mesmos nomes muitas vezes. A busca devolve no máximo 20 resultados, até 3 por arquivo (as linhas mais relevantes de cada um), para um arquivo só não ocupar a lista inteira. Se o limite for atingido, a resposta avisa: aí vale pedir "só nos PDFs" ou "só no módulo X".
 
 ## Ignorando arquivos e pastas (`.studynotesignore`)
 

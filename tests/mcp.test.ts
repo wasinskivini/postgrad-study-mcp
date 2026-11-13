@@ -831,6 +831,49 @@ describe('Study Notes MCP', () => {
     })
 })
 
+// A ordem da busca literal (PASSO 3.6): o mais relevante primeiro, não a
+// ordem das pastas. Pasta própria, para não mexer nos outros testes.
+describe('busca literal: ordem dos resultados', () => {
+    let client: Client
+    let root: string
+
+    before(async () => {
+        root = await mkdtemp(join(tmpdir(), 'study-notes-ordem-'))
+        const notas = join(root, 'notas')
+        await mkdir(join(notas, 'a-geral'), { recursive: true })
+        await mkdir(join(notas, 'z-temas'), { recursive: true })
+        // 25 arquivos que só citam o termo, em pastas que vêm ANTES na ordem
+        // alfabética: a busca antiga parava no 20º e nem via a nota certa.
+        for (let i = 0; i < 25; i++) await writeFile(join(notas, 'a-geral', `aula-${String(i).padStart(2, '0')}.md`), 'Nesta aula falamos de embedding de passagem.')
+        await writeFile(join(notas, 'z-temas', 'embeddings.md'), '# Embeddings\nVetores que representam o significado.')
+        // Código que repete o termo muitas vezes não passa na frente da anotação.
+        await writeFile(join(notas, 'a-geral', 'embedding_util.py'), Array(40).fill('embedding = embed(embedding)').join('\n'))
+        await writeFile(join(notas, 'z-temas', 'teclado.md'), 'Dicas para digitar mais rápido.')
+        await writeFile(join(notas, 'z-temas', 'versionamento.md'), 'Use git push depois do commit.')
+        client = await createTestClient(notas, join(root, 'data'))
+    })
+
+    after(async () => {
+        await client.close()
+        await rm(root, { recursive: true, force: true })
+    })
+
+    async function arquivos(consulta: string) {
+        const result = await callTool(client, 'buscar_material', { consulta })
+        return result.structuredContent.resultados.map((r: { arquivo: string }) => r.arquivo)
+    }
+
+    it('should put first the note named after the term, even after 25 other files', async () => {
+        const lista = await arquivos('embedding')
+        assert.strictEqual(lista[0], join('z-temas', 'embeddings.md'))
+        assert.ok(lista.indexOf(join('a-geral', 'embedding_util.py')) > 0, 'o código não vem em 1º lugar')
+    })
+
+    it('should prefer the term as a whole word', async () => {
+        assert.deepStrictEqual(await arquivos('git'), [join('z-temas', 'versionamento.md'), join('z-temas', 'teclado.md')])
+    })
+})
+
 // Caracteres invisíveis no próprio código passariam despercebidos numa revisão
 // (o GitHub até mostra um aviso). Nos testes e no safety.ts eles são escritos
 // como escapes visíveis, por exemplo \u200B, nunca como o caractere em si.

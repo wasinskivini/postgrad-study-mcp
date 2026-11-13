@@ -8,6 +8,7 @@ As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepa
 - Resource `estudos://indice`: o estado da busca por significado (ligada ou não, progresso da indexação, arquivos e trechos no índice e o último erro), sem precisar fazer uma busca.
 
 ### Alterado
+- **A busca por texto exato ordena por relevância**, e não mais pela ordem das pastas: conta o termo no nome do arquivo, em título (`# ...`), como palavra inteira e o número de repetições (com teto); com pontuação parecida, anotações vêm antes de PDFs, e PDFs antes de código. Num material de curso real, buscas como "docker", "MCP" e "embedding" passaram a trazer primeiro a nota sobre o assunto, em vez dos mesmos três READMEs para qualquer termo. Na avaliação, com 5 perguntas novas de termos que aparecem em vários arquivos, a literal foi de 3/5 para 5/5 no 1º lugar, e a híbrida (a da tool) de 20/25 para 22/25 no total: a ordem antiga estava atrapalhando a fusão das duas buscas. Custo: a busca agora percorre todos os arquivos antes de responder (no material medido, de ~0,12 s para ~0,4 s).
 - Documentado o comportamento com links simbólicos: a busca os ignora (evita resultados repetidos), e a leitura direta só aceita os que apontam para dentro da pasta de estudos.
 - O aviso de índice em construção diz "preparando" em vez de "0 de 0 arquivos" enquanto a lista de arquivos ainda está sendo montada.
 
