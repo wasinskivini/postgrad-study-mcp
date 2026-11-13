@@ -2,6 +2,21 @@
 
 As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/): a versão maior muda quando algo deixa de funcionar como antes (nome de tool, parâmetro, formato dos dados salvos).
 
+## [1.0.2] - 2026-11-13
+
+Correções vindas de uma revisão de código externa, todas reproduzidas antes de corrigir e cobertas por teste.
+
+### Corrigido
+- **Dúvidas perdidas em chamadas simultâneas:** registrar três dúvidas em paralelo gravava só uma, e uma delas respondia "sucesso" sem ter sido gravada. As gravações agora entram numa fila por arquivo.
+- **Uma subpasta ilegível derrubava a busca e a lista de módulos inteiras.** Agora ela é pulada, com aviso no log. Um módulo que é um arquivo recebe uma explicação, em vez de `ENOTDIR`.
+- **Caminhos absolutos (com o nome do usuário) em mensagens de erro:** nenhuma saída leva mais caminhos ao modelo, incluindo os erros de prompts e resources e o aviso da busca por significado.
+- **O trecho da busca literal podia não conter o termo** numa linha longa. Agora ele fica centrado no termo, e os segredos são mascarados antes do recorte (recortando antes, uma chave no ponto do corte vazava sem o prefixo).
+- **Parágrafos maiores que um trecho** eram lidos só no começo pela busca por significado. Agora viram vários trechos; os trechos das outras linhas não mudam, então os índices salvos continuam valendo.
+- Itens menores: intervalo de páginas inválido, vetores de tamanhos diferentes, alinhamento na leitura do índice e aviso para linhas com `!` no `.studynotesignore`.
+
+### Adicionado
+- A versão aparece no log de inicialização, e `npx -y study-notes-mcp@latest --version` mostra a versão.
+
 ## [1.0.1] - 2026-11-12
 
 ### Documentação
@@ -40,5 +55,6 @@ Primeira versão publicada.
 ### Clientes testados
 - VS Code com GitHub Copilot, Claude Code e Codex. Detalhes em [docs/clientes.md](docs/clientes.md).
 
+[1.0.2]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.2
 [1.0.1]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.1
 [1.0.0]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.0.0

@@ -52,6 +52,12 @@ describe('pacote do npm', () => {
         assert.ok(!arquivos.some((f: string) => /^(src|tests)\//.test(f)), arquivos.join(', '))
     })
 
+    it('should print its version through the bin', async () => {
+        const { bin, version } = JSON.parse(await readFile(join(pacote, 'package.json'), 'utf8'))
+        const saida = execFileSync('node', [resolve(pacote, bin['study-notes-mcp']), '--version'], { encoding: 'utf8', timeout: 10_000, stdio: ['ignore', 'pipe', 'pipe'] })
+        assert.strictEqual(saida.trim(), version)
+    })
+
     it('should start through the bin and list the tools', { timeout: 30_000 }, async () => {
         const { bin } = JSON.parse(await readFile(join(pacote, 'package.json'), 'utf8'))
         const entrada = resolve(pacote, bin['study-notes-mcp'])

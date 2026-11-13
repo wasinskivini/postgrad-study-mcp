@@ -130,6 +130,16 @@ describe('Study Notes MCP', () => {
 
     // Funcionalidades principais: PASSO 2.3 a 2.10.
     describe('estudo', () => {
+        it('should print the version with --version and exit without starting', async () => {
+            const { execFileSync } = await import('node:child_process')
+            const { readFile } = await import('node:fs/promises')
+            const { version } = JSON.parse(await readFile('package.json', 'utf8'))
+            const entrada = process.env.TEST_DIST ? 'dist/index.js' : 'src/index.ts'
+            // Sem stdin: se o servidor subisse, ficaria esperando e o teste travaria.
+            const saida = execFileSync('node', [entrada, '--version'], { encoding: 'utf8', timeout: 10_000, stdio: ['ignore', 'pipe', 'pipe'] })
+            assert.strictEqual(saida.trim(), version)
+        })
+
         it('should report the version from package.json', async () => {
             const { readFile } = await import('node:fs/promises')
             const { version } = JSON.parse(await readFile('package.json', 'utf8'))
@@ -234,7 +244,9 @@ describe('Study Notes MCP', () => {
 
         it('should track progress without duplicates', async () => {
             await callTool(client, 'marcar_aula_concluida', { modulo: 'modulo03', aula: '05' })
-            await callTool(client, 'marcar_aula_concluida', { modulo: 'modulo03', aula: '05' })
+            const repetida = await callTool(client, 'marcar_aula_concluida', { modulo: 'modulo03', aula: '05' })
+            // A resposta conta as aulas do módulo (a repetida não conta duas vezes).
+            assert.strictEqual(repetida.content[0].text, 'Aula "05" concluída. modulo03: 1 aula(s) feitas.')
             assert.deepStrictEqual(await readJsonResource(client, 'estudos://progresso'), { modulo03: ['05'] })
         })
 

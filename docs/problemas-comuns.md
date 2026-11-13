@@ -18,6 +18,6 @@
 | Parei o servidor e ele voltou sozinho | O VS Code reinicia servidores a cada conversa nova. Para desligar de verdade, remova a entrada do `mcp.json` |
 | A busca avisa que "a busca por significado não está disponível" | Falta a biblioteca de embeddings ou não deu para baixar o modelo. Veja [como ligar](busca-por-significado.md#como-ligar). Enquanto isso, a busca literal funciona normalmente |
 
-Para ver o que o servidor está fazendo: **MCP: List Servers** → `study-notes-mcp` → **Show Output**. Clicando no bloco "Ran buscar_material" de uma resposta do chat, dá para ver exatamente o que o servidor devolveu.
+Para ver o que o servidor está fazendo: **MCP: List Servers** → `study-notes-mcp` → **Show Output**. A primeira linha mostra a versão em uso (`Study Notes MCP Server 1.0.2 running on stdio`). No terminal, `npx -y study-notes-mcp@latest --version` mostra a versão mais recente. Clicando no bloco "Ran buscar_material" de uma resposta do chat, dá para ver exatamente o que o servidor devolveu.
 
 Não achou o seu problema aqui? Abra uma [issue](https://github.com/wasinskivini/study-notes-mcp/issues/new/choose), sem colar caminhos ou dados pessoais.

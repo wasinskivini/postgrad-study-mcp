@@ -29,7 +29,7 @@
 //       pode ser escrito no stdout (logs vão para o stderr, ver 1.3).
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 // O servidor já com tudo registrado (PASSO 2).
-import { server } from "./mcp.ts";
+import { server, version } from "./mcp.ts";
 // A configuração lida das variáveis de ambiente (PASSO 3.2).
 import { config } from "./service.ts";
 // A busca semântica opcional (PASSO 6).
@@ -38,6 +38,12 @@ import { atualizarIndice } from "./semantic.ts";
 // Liga o servidor ao transporte stdio e, se pedido, começa a montar o índice
 // semântico em segundo plano.
 async function main() {
+    // "npx study-notes-mcp --version" mostra a versão e sai, sem iniciar o
+    // servidor (por isso pode usar o stdout). Útil para pedir suporte.
+    if (process.argv.includes('--version') || process.argv.includes('-v')) {
+        console.log(version)
+        return
+    }
     const transport = new StdioServerTransport()
     // 1.2 — Conecta o servidor ao transporte. A partir daqui o servidor espera o
     //       "handshake" do cliente (mensagem initialize), responde com seu nome,
@@ -46,7 +52,7 @@ async function main() {
     await server.connect(transport)
     // 1.3 — Log no stderr (console.error), nunca no stdout. No VS Code ele aparece
     //       em MCP: List Servers → study-notes-mcp → Show Output.
-    console.error(`Study Notes MCP Server running on stdio (notas: ${config.notesDir})`)
+    console.error(`Study Notes MCP Server ${version} running on stdio (notas: ${config.notesDir})`)
     // 1.4 — Com SEMANTIC_SEARCH=true, começa a montar o índice em segundo plano
     //       (sem await): o servidor já atende pedidos enquanto isso.
     if (config.semanticSearch) void atualizarIndice()
