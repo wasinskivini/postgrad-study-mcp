@@ -7,7 +7,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { dividirEmTrechos, fundir, similaridade } from '../src/semantic.ts'
-import { config, janela, semCaminhos, semFrontmatter, tentarDeNovo } from '../src/service.ts'
+import { config, janela, parsePageRange, semCaminhos, semFrontmatter, tentarDeNovo } from '../src/service.ts'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -177,6 +177,20 @@ describe('busca literal: janela', () => {
             const trecho = janela(linha, 'termo')
             assert.ok(!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(trecho), `meio emoji com deslocamento ${deslocamento}`)
         }
+    })
+})
+
+// Itens pequenos de robustez (faxina da 1.0.2).
+describe('robustez', () => {
+    it('should treat vectors of different sizes as unrelated instead of NaN', () => {
+        assert.strictEqual(similaridade([1, 0, 0], [1, 0]), 0)
+        assert.strictEqual(similaridade([0.6, 0.8], [0.6, 0.8]), 1)
+    })
+
+    it('should reject page ranges that are not numbers', () => {
+        assert.throws(() => parsePageRange('abc', 10), /Páginas inválidas/)
+        assert.throws(() => parsePageRange('2-x', 10), /Páginas inválidas/)
+        assert.deepStrictEqual(parsePageRange('2-4', 10), [2, 4])
     })
 })
 

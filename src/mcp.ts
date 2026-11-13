@@ -61,7 +61,7 @@ Para consultar as dúvidas registradas e as aulas concluídas, use ver_estudos.`
 // Nome e versão aparecem para o cliente; no VS Code o nome vira prefixo das
 // tools e dos prompts (ex.: /mcp.study-notes-mcp.gerar_quiz). A versão vem
 // do package.json, que fica uma pasta acima tanto de src/ quanto de dist/.
-const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+export const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 
 export const server = new McpServer({
     name: 'study-notes-mcp',
@@ -326,8 +326,8 @@ server.registerTool(
     },
     async ({ modulo, aula }) => {
         try {
-            const progresso = await markAulaConcluida(modulo, aula)
-            return { content: [{ type: 'text', text: `Aula "${aula}" concluída. ${modulo}: ${progresso[modulo.trim()].length} aula(s) feitas.` }] }
+            const { modulo: chave, total } = await markAulaConcluida(modulo, aula)
+            return { content: [{ type: 'text', text: `Aula "${aula}" concluída. ${chave}: ${total} aula(s) feitas.` }] }
         } catch (error) {
             return errorResult('marcar a aula', error)
         }

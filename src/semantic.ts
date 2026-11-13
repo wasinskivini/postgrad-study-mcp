@@ -177,9 +177,12 @@ let ultimaAtualizacao = 0;
 // No arquivo do índice, cada vetor vira texto base64 (números de 4 bytes): fica
 // várias vezes menor do que uma lista de números em JSON.
 const toBase64 = (vetor: number[]) => Buffer.from(new Float32Array(vetor).buffer).toString('base64');
+// Uma Float32Array só pode começar num endereço múltiplo de 4. O Node costuma
+// alinhar os Buffers pequenos, mas não garante: fora do alinhamento, copia.
 const fromBase64 = (texto: string) => {
     const bytes = Buffer.from(texto, 'base64');
-    return new Float32Array(bytes.buffer, bytes.byteOffset, bytes.length / 4);
+    if (bytes.byteOffset % 4 === 0) return new Float32Array(bytes.buffer, bytes.byteOffset, bytes.length / 4);
+    return new Float32Array(new Uint8Array(bytes).buffer);
 };
 // Vetores decodificados ficam em cache para a busca não converter tudo de novo.
 const vetores = new Map<string, Float32Array[]>();
@@ -278,6 +281,9 @@ export function atualizarIndice(): Promise<void> {
 // Vetores normalizados: o produto escalar é a similaridade de cosseno
 // (1 = mesmo sentido, perto de 0 = nada a ver).
 export function similaridade(a: ArrayLike<number>, b: ArrayLike<number>): number {
+    // Vetores de tamanhos diferentes (índice de outro modelo, arquivo meio
+    // gravado) dariam NaN e embaralhariam a ordem em silêncio: contam como 0.
+    if (a.length !== b.length) return 0;
     let soma = 0;
     for (let i = 0; i < a.length; i++) soma += a[i] * b[i];
     return soma;

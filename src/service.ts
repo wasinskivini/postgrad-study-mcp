@@ -194,8 +194,13 @@ async function carregarPadroes(): Promise<Padrao[]> {
     const info = await stat(arquivo).catch(() => undefined);
     if (!info?.isFile()) { ignorados = undefined; return []; }
     if (ignorados?.mtimeMs !== info.mtimeMs) {
-        ignorados = { mtimeMs: info.mtimeMs, padroes: lerPadroes(await readFile(arquivo, 'utf8')) };
+        const conteudo = await readFile(arquivo, 'utf8');
+        ignorados = { mtimeMs: info.mtimeMs, padroes: lerPadroes(conteudo) };
         console.error(`${IGNORE_FILE}: ${ignorados.padroes.length} padrão(ões) de exclusão`);
+        // Quem vem do .gitignore usa "!" para exceções; aqui elas são descartadas,
+        // e sem aviso a pessoa concluiria que o arquivo não funciona.
+        const excecoes = conteudo.split(/\r?\n/).filter(linha => linha.trim().startsWith('!')).length;
+        if (excecoes) console.error(`${IGNORE_FILE}: ${excecoes} linha(s) com "!" ignorada(s): exceções não são aceitas`);
     }
     return ignorados.padroes;
 }
@@ -249,11 +254,13 @@ async function readPdfPages(file: string): Promise<string[]> {
 
 // "5" ou "5-8" → [início, fim], validado contra o total de páginas
 // Sem "paginas", devolve as primeiras MAX_PDF_PAGES_PER_READ páginas.
-function parsePageRange(paginas: string | undefined, total: number): [number, number] {
+export function parsePageRange(paginas: string | undefined, total: number): [number, number] {
     if (!paginas) return [1, Math.min(total, MAX_PDF_PAGES_PER_READ)];
     // "5" vira [5, 5]; "5-8" vira [5, 8].
     const [start, end = start] = paginas.split('-').map(Number);
-    if (start < 1 || end < start || end > total) {
+    // Number("abc") é NaN, e NaN escaparia das comparações abaixo: sem esta
+    // checagem, uma chamada direta com texto inválido devolveria uma leitura vazia.
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start || end > total) {
         throw new Error(`Páginas inválidas: ${paginas}. O PDF tem ${total} página(s).`);
     }
     // Limite de páginas por leitura: controla quantos tokens vão para o modelo.
@@ -714,7 +721,9 @@ export async function getProgresso(): Promise<Progresso> {
 }
 
 // Marca a aula como concluída no módulo e devolve o progresso completo.
-export async function markAulaConcluida(modulo: string, aula: string): Promise<Progresso> {
+// Devolve também a chave usada (o módulo já limpo) e o total de aulas dele:
+// quem chama não precisa recalcular a chave do jeito que clean() faz.
+export async function markAulaConcluida(modulo: string, aula: string): Promise<{ progresso: Progresso; modulo: string; total: number }> {
     return emFila('progresso.json', async () => {
         const progresso = await getProgresso();
         const key = clean(modulo);
@@ -723,7 +732,7 @@ export async function markAulaConcluida(modulo: string, aula: string): Promise<P
         aulas.add(clean(aula));
         progresso[key] = [...aulas];
         await writeJson('progresso.json', progresso);
-        return progresso;
+        return { progresso, modulo: key, total: progresso[key].length };
     });
 }
 
