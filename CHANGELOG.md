@@ -5,6 +5,8 @@ As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepa
 ## [Não publicado]
 
 ### Adicionado
+- Mais segredos mascarados: valores sem aspas (`.env` colado numa nota, frontmatter YAML), JWT, `Bearer`, `x-api-key` e tokens do Hugging Face. Textos de exemplo e referências no código ficam como estão (medido num material real: sem esse filtro, todos os casos novos eram falsos).
+- Linha 🔒 quando algo com cara de credencial foi mascarado, separada do alerta de *prompt injection*. Na busca por significado, o mascaramento é refeito na resposta, cobrindo índices gerados por versões anteriores.
 - Tool `listar_arquivos`: os arquivos de um módulo, com tipo e tamanho (até 100, com filtro por tipo). O `gerar_quiz` passa a listar o módulo antes de ler, em vez de depender de termos de busca adivinhados.
 
 ### Alterado

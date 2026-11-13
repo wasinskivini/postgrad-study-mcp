@@ -7,6 +7,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { dividirEmTrechos, fundir, similaridade } from '../src/semantic.ts'
+import { redactSecrets } from '../src/safety.ts'
 import { config, janela, paraComparar, parsePageRange, semCaminhos, semFrontmatter, tentarDeNovo } from '../src/service.ts'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -207,5 +208,39 @@ describe('busca literal: acentos', () => {
         const trecho = janela(linha, paraComparar('ativacao'))
         assert.ok(trecho.includes('ATIVAÇÃO'), trecho)
     })
+})
+
+// Segredos (PASSO 4.2). Os "mantidos" são falsos positivos medidos num material
+// de curso real: sem o filtro, viravam avisos de credencial sem haver nenhuma.
+describe('segredos sem aspas', () => {
+    const mascarados = [
+        ['frontmatter YAML', 'password: hunter2secreto', 'hunter2secreto'],
+        ['.env colado na nota', 'DB_TOKEN=abcdef0123456789abcdef', 'abcdef0123456789abcdef'],
+        ['cabeçalho Bearer com JWT', 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.abc123def456ghi', 'eyJhbGciOiJIUzI1NiJ9'],
+        ['x-api-key no curl', "curl -H 'x-api-key: abcdef0123456789abcd'", 'abcdef0123456789abcd'],
+        ['token do Hugging Face', 'HF_TOKEN=hf_abcdefghijklmnopqrstuvwxyz0123456789', 'hf_abcdefghij'],
+        ['client_secret longo', 'client_secret: AbCdEfGhIjKlMnOpQrStUv', 'AbCdEfGhIjKlMnOpQrStUv'],
+    ]
+    for (const [caso, linha, valor] of mascarados) {
+        it(`should mask: ${caso}`, () => {
+            const { text, segredos } = redactSecrets(linha)
+            assert.ok(!text.includes(valor), text)
+            assert.ok(segredos >= 1)
+        })
+    }
+
+    const mantidos = [
+        ['texto de exemplo de README', 'OPENAI_API_KEY=your_openai_api_key'],
+        ['texto de exemplo em português', 'API_KEY=sua_chave_aqui'],
+        ['referência no código', 'password: config.neo4jPassword'],
+        ['variável de ambiente', 'token: process.env.GITHUB_TOKEN'],
+        ['nome que só começa com token', 'tokenizer: cl100k_base'],
+        ['prosa sem dígito', 'senha: obrigatória'],
+    ]
+    for (const [caso, linha] of mantidos) {
+        it(`should keep: ${caso}`, () => {
+            assert.deepStrictEqual(redactSecrets(linha), { text: linha, segredos: 0 })
+        })
+    }
 })
 

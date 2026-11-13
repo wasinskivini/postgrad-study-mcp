@@ -37,7 +37,7 @@ import {
     carregarExclusao, config, enabledTypes, gravarAtomico, listNoteFiles, readSearchableLines, resolveInsideNotes,
     searchNotes, semCaminhos, semFrontmatter, typeOf, type Resultado, type Tipo,
 } from './service.ts';
-import { prepareUntrusted } from './safety.ts';
+import { prepareUntrusted, redactSecrets } from './safety.ts';
 
 // ----------------------------------------------------------------------------
 // 6.1 — O MODELO E OS LIMITES
@@ -318,9 +318,9 @@ export async function semanticSearch(pergunta: string, modulo?: string, tipos?: 
         const vetoresArquivo = vetores.get(arquivo)!;
         dados.trechos.forEach((t, i) => candidatos.push({
             arquivo, linha: t.linha, pagina: t.pagina, alertas: t.alertas,
-            // Só os primeiros 500 caracteres vão para o modelo; o resto ele lê
-            // com ler_material, se precisar.
-            trecho: t.texto.slice(0, 500),
+            // Texto inteiro por enquanto: o corte em 500 caracteres vem depois de
+            // mascarar os segredos (passo e).
+            trecho: t.texto,
             similaridade: Math.round(similaridade(vetorPergunta, vetoresArquivo[i]) * 1000) / 1000,
         }));
     }
@@ -339,6 +339,16 @@ export async function semanticSearch(pergunta: string, modulo?: string, tipos?: 
         porArquivo.set(candidato.arquivo, usados + 1);
         resultados.push(candidato);
         if (resultados.length >= MAX_SEMANTIC_RESULTS) break;
+    }
+    // Passo e): mascara de novo os segredos, com os padrões atuais (o índice
+    // salvo pode ter sido feito com padrões mais antigos), sobre o trecho
+    // inteiro, e só então corta: só os primeiros 500 caracteres vão para o
+    // modelo; o resto ele lê com ler_material, se precisar. Só os escolhidos
+    // passam por aqui (no máximo MAX_SEMANTIC_RESULTS), não o índice todo.
+    for (const resultado of resultados) {
+        const { text, segredos } = redactSecrets(resultado.trecho);
+        resultado.trecho = text.slice(0, 500);
+        resultado.segredos = segredos;
     }
     return { resultados, aviso };
 }
