@@ -35,7 +35,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import {
     carregarExclusao, config, enabledTypes, gravarAtomico, listNoteFiles, readSearchableLines, resolveInsideNotes,
-    searchNotes, semFrontmatter, typeOf, type Resultado, type Tipo,
+    searchNotes, semCaminhos, semFrontmatter, typeOf, type Resultado, type Tipo,
 } from './service.ts';
 import { prepareUntrusted } from './safety.ts';
 
@@ -383,7 +383,9 @@ export async function buscaHibrida(consulta: string, modulo?: string, tipos?: Ti
         const { resultados: semanticos, aviso } = await semanticSearch(consulta, modulo, tiposSemanticos);
         return { resultados: fundir(literais, semanticos), aviso };
     } catch (error) {
-        const motivo = error instanceof Error ? error.message : String(error);
+        // O motivo vai dentro de um resultado de sucesso, sem passar pelo
+        // errorResult: a mensagem pode trazer o caminho de MODELS_DIR.
+        const motivo = semCaminhos(error instanceof Error ? error.message : String(error));
         return soLiteral(`A busca por significado não está disponível e só a literal foi usada. ${motivo}`);
     }
 }

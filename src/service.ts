@@ -27,6 +27,7 @@
  * A busca semântica (opcional) fica separada, no PASSO 6 (semantic.ts).
  */
 import { readdir, readFile, writeFile, mkdir, realpath, rename, rm, stat } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import { extname, join, relative, resolve, sep } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -82,6 +83,28 @@ export const config = {
     // Onde o modelo de embeddings é guardado depois do download (~145 MB, uma vez só).
     modelsDir: resolve(process.env.MODELS_DIR ?? join(dataDir, 'modelos')),
 };
+
+// Mensagens de erro do sistema trazem o caminho absoluto, com o nome do seu
+// usuário (/Users/fulano/...). Tudo que vai para o modelo, que roda na nuvem,
+// passa por aqui: as pastas configuradas viram rótulos e a pasta pessoal vira ~.
+// Os caminhos "reais" também entram (no Mac, /var/... às vezes aparece como
+// /private/var/...), e os mais longos são trocados primeiro.
+export function semCaminhos(texto: string): string {
+    const pastas: [string, string][] = [
+        [config.notesDir, '<NOTES_DIR>'], [config.dataDir, '<DATA_DIR>'],
+        [config.modelsDir, '<MODELS_DIR>'], [homedir(), '~'],
+    ];
+    // Caminhos curtos demais ("/" como pasta pessoal num contêiner) trocariam
+    // toda barra da mensagem; ficam de fora.
+    const trocas = pastas.filter(([pasta]) => pasta.length > 3).flatMap(([pasta, rotulo]) => {
+        let real = pasta;
+        try { real = realpathSync(pasta); } catch { /* pasta que ainda não existe */ }
+        return real === pasta ? [[pasta, rotulo]] : [[pasta, rotulo], [real, rotulo]];
+    });
+    return trocas
+        .sort((a, b) => b[0].length - a[0].length)
+        .reduce((acc, [pasta, rotulo]) => acc.replaceAll(pasta, rotulo), texto);
+}
 
 // Formatos dos dados que circulam entre as funções.
 export type Duvida = { modulo: string; texto: string; criadaEm: string; resolvida: boolean };

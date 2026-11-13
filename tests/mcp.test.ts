@@ -549,9 +549,36 @@ describe('Study Notes MCP', () => {
                 // A pasta pedida em si continua avisando: "nada encontrado" enganaria.
                 const pedida = await callTool(ilegivelClient, 'buscar_material', { consulta: 'conteudo-legivel', modulo: 'restrita' })
                 assert.strictEqual(pedida.isError, true)
+                // O erro do sistema traz o caminho absoluto; ele não pode chegar ao modelo.
+                const { realpath } = await import('node:fs/promises')
+                for (const caminho of [root, await realpath(root)]) assert.ok(!pedida.content[0].text.includes(caminho), pedida.content[0].text)
+                assert.match(pedida.content[0].text, /<NOTES_DIR>/)
             } finally {
                 await ilegivelClient.close()
                 await chmod(join(notas, 'restrita'), 0o755)
+            }
+        })
+
+        // Resources e prompts não passam pelo errorResult: o erro sobe direto.
+        it('should not reveal absolute paths in prompt and resource errors', { skip: semPermissao }, async () => {
+            const { chmod, realpath } = await import('node:fs/promises')
+            const dataDir = join(root, 'data-sem-leitura')
+            await mkdir(dataDir)
+            await writeFile(join(dataDir, 'duvidas.json'), '[]')
+            await chmod(join(dataDir, 'duvidas.json'), 0o000)
+            const semLeituraClient = await createTestClient(join(root, 'notas'), dataDir)
+            try {
+                const erros: string[] = []
+                await semLeituraClient.getPrompt({ name: 'plano_de_revisao' }).catch((e: Error) => erros.push(e.message))
+                await semLeituraClient.readResource({ uri: 'estudos://duvidas' }).catch((e: Error) => erros.push(e.message))
+                assert.strictEqual(erros.length, 2, 'os dois pedidos deveriam falhar')
+                for (const erro of erros) {
+                    for (const caminho of [root, await realpath(root)]) assert.ok(!erro.includes(caminho), erro)
+                    assert.match(erro, /<DATA_DIR>/)
+                }
+            } finally {
+                await semLeituraClient.close()
+                await chmod(join(dataDir, 'duvidas.json'), 0o644)
             }
         })
 

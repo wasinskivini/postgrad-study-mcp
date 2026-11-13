@@ -7,7 +7,9 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { dividirEmTrechos, fundir, similaridade } from '../src/semantic.ts'
-import { semFrontmatter, tentarDeNovo } from '../src/service.ts'
+import { config, semCaminhos, semFrontmatter, tentarDeNovo } from '../src/service.ts'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 
 describe('busca semântica: sem modelo', () => {
     it('should split long files into chunks that keep the starting line', () => {
@@ -95,3 +97,14 @@ describe('dados salvos: tentarDeNovo', () => {
         assert.strictEqual(chamadas, 1)
     })
 })
+
+// Nenhum caminho absoluto vai para o modelo (PASSO 3.2).
+describe('mensagens de erro: semCaminhos', () => {
+    it('should replace the configured folders and the home folder', () => {
+        assert.strictEqual(semCaminhos(`EACCES: '${join(config.notesDir, 'modulo01')}'`), `EACCES: '${join('<NOTES_DIR>', 'modulo01')}'`)
+        assert.strictEqual(semCaminhos(`falhou em ${join(config.dataDir, 'duvidas.json')}`), `falhou em ${join('<DATA_DIR>', 'duvidas.json')}`)
+        assert.strictEqual(semCaminhos(`ENOENT: ${join(homedir(), 'outra', 'pasta')}`), `ENOENT: ${join('~', 'outra', 'pasta')}`)
+        assert.strictEqual(semCaminhos('mensagem sem caminho'), 'mensagem sem caminho')
+    })
+})
+
