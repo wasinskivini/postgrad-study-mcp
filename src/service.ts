@@ -446,6 +446,21 @@ export async function validarPasta(caminho: string): Promise<string> {
     return relativo;
 }
 
+// Até 200 caracteres por trecho, centrados no termo. Numa linha longa (um
+// parágrafo do Obsidian costuma ser uma linha só), os primeiros 200 caracteres
+// podem não conter o que foi buscado. "…" marca onde o trecho foi cortado.
+const JANELA = 200;
+export function janela(linha: string, termo: string): string {
+    if (linha.length <= JANELA) return linha;
+    const posicao = linha.toLowerCase().indexOf(termo);
+    let inicio = posicao < 0 ? 0 : Math.max(0, Math.min(posicao - Math.floor((JANELA - termo.length) / 2), linha.length - JANELA));
+    let fim = Math.min(linha.length, inicio + JANELA);
+    // Não corta um emoji (ou outro caractere de 2 unidades) ao meio.
+    if (inicio > 0 && /[\uDC00-\uDFFF]/.test(linha[inicio])) inicio++;
+    if (fim < linha.length && /[\uD800-\uDBFF]/.test(linha[fim - 1])) fim--;
+    return `${inicio > 0 ? '…' : ''}${linha.slice(inicio, fim)}${fim < linha.length ? '…' : ''}`;
+}
+
 // ----------------------------------------------------------------------------
 // 3.6 — BUSCA (usada pela tool buscar_material, PASSO 2.4)
 // ----------------------------------------------------------------------------
@@ -476,10 +491,12 @@ export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[])
         lines: for (const { pagina, lines } of sections) {
             for (const [index, line] of lines.entries()) {
                 if (!line.toLowerCase().includes(needle)) continue;
-                // Passo e): achou! Corta em 200 caracteres e passa pelas
-                // proteções (PASSO 4.4) antes de guardar o resultado.
-                const { text, alertas } = prepareUntrusted(line.trim().slice(0, 200));
-                results.push({ arquivo: relative(config.notesDir, file), linha: index + 1, pagina, trecho: text, alertas });
+                // Passo e): achou! Passa a linha INTEIRA pelas proteções (PASSO
+                // 4.4) e só depois recorta o trecho em volta do termo. Nessa
+                // ordem, um segredo perto do corte é mascarado por inteiro, em
+                // vez de vazar pela metade sem o prefixo (sk-...) que o identifica.
+                const { text, alertas } = prepareUntrusted(line.trim());
+                results.push({ arquivo: relative(config.notesDir, file), linha: index + 1, pagina, trecho: janela(text, needle), alertas });
                 // Passo f): para no limite geral, para não mandar texto demais ao
                 // modelo, e no limite por arquivo, para variar as fontes.
                 if (results.length >= MAX_RESULTS) return results;

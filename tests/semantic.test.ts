@@ -7,7 +7,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { dividirEmTrechos, fundir, similaridade } from '../src/semantic.ts'
-import { config, semCaminhos, semFrontmatter, tentarDeNovo } from '../src/service.ts'
+import { config, janela, semCaminhos, semFrontmatter, tentarDeNovo } from '../src/service.ts'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -105,6 +105,31 @@ describe('mensagens de erro: semCaminhos', () => {
         assert.strictEqual(semCaminhos(`falhou em ${join(config.dataDir, 'duvidas.json')}`), `falhou em ${join('<DATA_DIR>', 'duvidas.json')}`)
         assert.strictEqual(semCaminhos(`ENOENT: ${join(homedir(), 'outra', 'pasta')}`), `ENOENT: ${join('~', 'outra', 'pasta')}`)
         assert.strictEqual(semCaminhos('mensagem sem caminho'), 'mensagem sem caminho')
+    })
+})
+
+// Busca literal (PASSO 3.6): o trecho acompanha o termo.
+describe('busca literal: janela', () => {
+    it('should keep short lines as they are', () => {
+        assert.strictEqual(janela('linha curta com o termo', 'termo'), 'linha curta com o termo')
+    })
+
+    it('should center long lines on the term and mark the cuts', () => {
+        const linha = 'lorem ipsum '.repeat(50) + 'o termo BACKPROPAGATION aparece aqui ' + 'dolor sit '.repeat(30)
+        const trecho = janela(linha, 'backpropagation')
+        assert.ok(trecho.includes('BACKPROPAGATION'), trecho)
+        assert.ok(trecho.startsWith('…') && trecho.endsWith('…'))
+        assert.ok(trecho.length <= 202, `${trecho.length} caracteres`)
+        // Termo no começo: sem "…" no início.
+        assert.ok(!janela('BACKPROPAGATION ' + 'x '.repeat(200), 'backpropagation').startsWith('…'))
+    })
+
+    it('should not split a two-unit character (emoji) at the cut', () => {
+        for (let deslocamento = 0; deslocamento < 4; deslocamento++) {
+            const linha = 'a'.repeat(deslocamento) + '😀'.repeat(150) + ' termo ' + '😀'.repeat(150)
+            const trecho = janela(linha, 'termo')
+            assert.ok(!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(trecho), `meio emoji com deslocamento ${deslocamento}`)
+        }
     })
 })
 
