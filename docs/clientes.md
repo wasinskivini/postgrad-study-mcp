@@ -6,7 +6,7 @@ O servidor segue o padrão MCP, então as **tools** funcionam igual em qualquer 
 
 | Recurso | VS Code + Copilot | Claude Code | Codex (extensão do VS Code) |
 |---|---|---|---|
-| As 7 tools | ✅ | ✅ | ✅ |
+| As 8 tools | ✅ | ✅ | ✅ |
 | Proteções (`.env`, segredos, `.studynotesignore`) | ✅ | ✅ | ✅ |
 | Prompts (`/gerar_quiz`, `/plano_de_revisao`) | ✅ | ✅ | ❌ não são exibidos ([por quê](#codex-por-que-os-prompts-não-aparecem)) |
 | Autocompletar do módulo no quiz | ✅ | ❌ digite o número ou um trecho do nome | — |

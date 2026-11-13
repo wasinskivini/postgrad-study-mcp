@@ -498,17 +498,45 @@ export function janela(linha: string, termo: string): string {
 // ----------------------------------------------------------------------------
 // 3.6 — BUSCA (usada pela tool buscar_material, PASSO 2.4)
 // ----------------------------------------------------------------------------
+// Pasta onde buscar ou listar: o módulo pedido (dentro de NOTES_DIR, pelo
+// PASSO 3.9) ou NOTES_DIR inteira. Usada pela busca e por listarArquivos, para
+// as duas recusarem as mesmas coisas.
+async function pastaDoModulo(modulo?: string): Promise<string> {
+    if (!modulo) return config.notesDir;
+    const pasta = await resolveInsideNotes(modulo);
+    // O modelo às vezes passa um arquivo (como veio da busca) no lugar do módulo.
+    if (!(await stat(pasta)).isDirectory()) {
+        throw new Error(`"${modulo}" é um arquivo, não um módulo. Use uma pasta, como as de listar_modulos; para ler o arquivo, use ler_material.`);
+    }
+    return pasta;
+}
+
+// Arquivos de um módulo, para o modelo saber o que existe antes de ler (o
+// quiz, por exemplo, não precisa mais chutar termos de busca). Na ordem da
+// busca (anotações, PDFs, código) e com teto: um módulo com 186 arquivos de
+// código custaria milhares de tokens só para listar.
+export const MAX_ARQUIVOS_LISTADOS = 100;
+export type ArquivoListado = { arquivo: string; tipo: Tipo; kb: number };
+export async function listarArquivos(modulo?: string, tipos?: Tipo[]): Promise<{ arquivos: ArquivoListado[]; total: number; porTipo: Partial<Record<Tipo, number>> }> {
+    const files = (await listNoteFiles(await pastaDoModulo(modulo), enabledTypes(tipos)))
+        .sort((a, b) => TYPE_PRIORITY.indexOf(typeOf(a)!) - TYPE_PRIORITY.indexOf(typeOf(b)!) || a.localeCompare(b));
+    const porTipo: Partial<Record<Tipo, number>> = {};
+    for (const file of files) porTipo[typeOf(file)!] = (porTipo[typeOf(file)!] ?? 0) + 1;
+    const arquivos = await Promise.all(files.slice(0, MAX_ARQUIVOS_LISTADOS).map(async file => ({
+        arquivo: relative(config.notesDir, file),
+        tipo: typeOf(file)!,
+        kb: Math.max(1, Math.round(((await stat(file).catch(() => undefined))?.size ?? 0) / 1024)),
+    })));
+    return { arquivos, total: files.length, porTipo };
+}
+
 // Busca LITERAL: procura o termo exato, sem diferenciar maiúsculas/minúsculas
 // nem acentos ("funcao" acha "função" e vice-versa).
 // Não entende sinônimos ("vetores" não acha "embeddings") — para isso existe a
 // busca semântica opcional (PASSO 6).
 export async function searchNotes(term: string, modulo?: string, tipos?: Tipo[]): Promise<Resultado[]> {
     // Passo a): onde buscar — o módulo pedido (validado pelo 3.9) ou tudo.
-    const baseDir = modulo ? await resolveInsideNotes(modulo) : config.notesDir;
-    // O modelo às vezes passa um arquivo (como veio da busca) no lugar do módulo.
-    if (modulo && !(await stat(baseDir)).isDirectory()) {
-        throw new Error(`"${modulo}" é um arquivo, não um módulo. Use uma pasta, como as de listar_modulos; para ler o arquivo, use ler_material.`);
-    }
+    const baseDir = await pastaDoModulo(modulo);
     const needle = paraComparar(term);
     const results: Resultado[] = [];
 
