@@ -17,6 +17,9 @@ Correções vindas de uma revisão de código externa, todas reproduzidas antes 
 ### Adicionado
 - A versão aparece no log de inicialização, e `npx -y study-notes-mcp@latest --version` mostra a versão.
 
+### Documentação
+- README com a seção "Por que este servidor", e descrição e palavras-chave do npm destacando a busca híbrida local e sem chave de API.
+
 ## [1.0.1] - 2026-11-12
 
 ### Documentação

@@ -17,6 +17,18 @@ Copilot:  Chunking divide documentos grandes em trechos menores antes de gerar
 - **Seguro com conteúdo não confiável:** mascara segredos e avisa sobre *prompt injection* nos arquivos lidos.
 - **Funciona com qualquer pasta:** anotações em Markdown, PDFs das aulas, código e notas do [Obsidian](https://obsidian.md).
 
+## Por que este servidor
+
+Cada parte já existe em algum lugar; a combinação é que é difícil de achar:
+
+| Alternativa comum | O que costuma faltar | Aqui |
+|---|---|---|
+| Servidor de arquivos genérico | busca por assunto, fonte com linha ou página, cuidado com o conteúdo lido | busca híbrida, `arquivo:linha` / `arquivo, p. N`, proteções contra vazamento e *prompt injection* |
+| MCP de notas ou de Obsidian | leitura de PDF por página; funcionar sem o app aberto | qualquer pasta: Markdown, PDFs, código e notas do Obsidian |
+| MCP de busca semântica (RAG) | rodar sem Ollama, sem chave de API e sem banco vetorial | o modelo de embeddings roda dentro do servidor: só o `npx` |
+
+E, além disso, um fluxo de estudo (dúvidas, progresso, quiz e plano de revisão que citam a fonte) e uma publicação verificável: cada versão sai do GitHub com [*provenance*](https://docs.npmjs.com/generating-provenance-statements) e só é liberada com 2FA.
+
 > **O servidor não traz conteúdo nenhum.** Ele busca na **sua** pasta de estudos. Cada pessoa aponta para a própria pasta, e ninguém acessa os arquivos de ninguém.
 
 ---
