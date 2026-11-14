@@ -19,7 +19,7 @@
  * semântica brilha). Se a híbrida não ganhar de
  * nenhuma das duas sozinha, juntá-las não valeu a pena.
  *
- * Roda com npm run test:semantic: usa o modelo de verdade (~145 MB na primeira vez).
+ * Roda com npm run test:semantic: usa o modelo de verdade (~310 MB na primeira vez).
  * O corpus é pequeno (12 arquivos escritos para o teste): serve para comparar
  * mudanças na busca, não para prometer um percentual no seu material.
  */

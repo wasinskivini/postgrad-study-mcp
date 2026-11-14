@@ -1,7 +1,7 @@
 /**
  * PASSO 5.5 — TESTES DA BUSCA SEMÂNTICA (PASSO 6), COM O MODELO DE VERDADE
  *
- * Sobe o servidor com SEMANTIC_SEARCH=true. Baixa o modelo (~145 MB) na
+ * Sobe o servidor com SEMANTIC_SEARCH=true. Baixa o modelo (~310 MB) na
  * primeira vez, por isso o arquivo não termina em .test.ts: npm test não o
  * pega, só npm run test:semantic.
  */

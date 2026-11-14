@@ -2,6 +2,20 @@
 
 As mudanças de cada versão. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/): a versão maior muda quando algo deixa de funcionar como antes (nome de tool, parâmetro, formato dos dados salvos).
 
+## [1.3.0] - 2026-11-14
+
+Busca por significado bem melhor no material real, escolhida por medição: 48 perguntas sobre um material de curso de verdade, escritas com outras palavras a partir de trechos sorteados, feitas ao servidor pelo protocolo MCP, como um cliente faz.
+
+### Alterado
+- **Modelo novo: [snowflake-arctic-embed-m-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-m-v2.0)** (Apache-2.0, multilíngue), no lugar do multilingual-e5-small, e **cada trecho ganha um cabeçalho** com o nome do arquivo e os títulos da seção antes de virar vetor. Arquivo certo em 1º lugar: de 21 para **34** das 48 perguntas; entre os 5 primeiros: de 33 para **44**. Também comparados no mesmo material: e5-base (36 no top 5 só por significado, contra 42 do escolhido) e bge-m3 (36, com o dobro do tamanho e 20 min de indexação). Uma busca por palavras (BM25) junto foi testada e não acrescentou nada, por isso ficou de fora. A busca por nome exato continua igual (6 de 6 na avaliação do repositório).
+- **Custos, quase todos de uma vez só:** o modelo baixa ~310 MB (antes ~120 MB); a primeira indexação leva ~6,5 min para ~1.700 arquivos (antes ~2 min), com a busca funcionando enquanto isso; o índice ocupa 58 MB (antes 32 MB). Cada servidor aberto usa ~1,07 GB de memória (antes ~790 MB). O tempo de cada busca não mudou (~0,44 s).
+- **O índice é refeito uma vez, sozinho**, na primeira conversa depois de atualizar. O modelo antigo fica em `MODELS_DIR/Xenova` (~120 MB) e pode ser apagado.
+
+### Corrigido
+- **Buscas travavam durante a indexação** (passavam de 60 s e o cliente desistia) com o modelo maior: o motor de inferência roda cada lote no thread principal e congela o servidor enquanto calcula. Agora os pedidos do cliente têm prioridade (a indexação pausa entre os lotes enquanto houver um pedido esperando resposta), e os lotes são menores. Medido na reindexação do material real: ~4 s nos primeiros segundos, quando o servidor ainda está carregando o modelo, e ~0,8 s depois.
+- O aviso "Unknown model class" que a biblioteca de embeddings escrevia no log a cada início não aparece mais (só erros são registrados).
+- **Correção do que foi anunciado na 1.2.0:** o ganho do corte nos títulos (de 26% para 41%) foi medido usando os próprios títulos como perguntas, o que favorecia o método. Em perguntas reais, com o modelo antigo, o efeito ficou dentro do ruído. Com o modelo novo, o corte nos títulos soma +0,04 de MRR, e o cabeçalho, +0,07.
+
 ## [1.2.0] - 2026-11-13
 
 A terceira parte da revisão de código externa: buscas mais relevantes (exata e por significado), PDFs mais rápidos e o estado do índice visível. Cada mudança foi medida num material de curso real.
@@ -93,6 +107,7 @@ Primeira versão publicada.
 ### Clientes testados
 - VS Code com GitHub Copilot, Claude Code e Codex. Detalhes em [docs/clientes.md](docs/clientes.md).
 
+[1.3.0]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.3.0
 [1.2.0]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.2.0
 [1.1.1]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.1.1
 [1.1.0]: https://github.com/wasinskivini/study-notes-mcp/releases/tag/v1.1.0

@@ -33,7 +33,7 @@ import { server, version } from "./mcp.ts";
 // A configuração lida das variáveis de ambiente (PASSO 3.2).
 import { config } from "./service.ts";
 // A busca semântica opcional (PASSO 6).
-import { atualizarIndice } from "./semantic.ts";
+import { atualizarIndice, pedidoChegou, pedidoRespondido } from "./semantic.ts";
 
 // Liga o servidor ao transporte stdio e, se pedido, começa a montar o índice
 // semântico em segundo plano.
@@ -50,6 +50,19 @@ async function main() {
     //       versão, capacidades e instructions, e passa a atender pedidos como
     //       tools/list e tools/call.
     await server.connect(transport)
+    // 1.2b — Pedidos do cliente têm prioridade sobre a indexação (PASSO 6.4):
+    //       cada pedido (mensagem com "id" e "method") fica pendente até a
+    //       resposta (mensagem com o mesmo "id" e "result" ou "error") sair.
+    const receber = transport.onmessage
+    transport.onmessage = (mensagem) => {
+        if ('id' in mensagem && 'method' in mensagem) pedidoChegou(mensagem.id)
+        receber?.(mensagem)
+    }
+    const enviar = transport.send.bind(transport)
+    transport.send = (mensagem) => {
+        if ('id' in mensagem && mensagem.id !== undefined && ('result' in mensagem || 'error' in mensagem)) pedidoRespondido(mensagem.id)
+        return enviar(mensagem)
+    }
     // 1.3 — Log no stderr (console.error), nunca no stdout. No VS Code ele aparece
     //       em MCP: List Servers → study-notes-mcp → Show Output.
     console.error(`Study Notes MCP Server ${version} running on stdio (notas: ${config.notesDir})`)

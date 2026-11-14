@@ -42,15 +42,20 @@ import { prepareUntrusted, redactSecrets } from './safety.ts';
 // ----------------------------------------------------------------------------
 // 6.1 — O MODELO E OS LIMITES
 // ----------------------------------------------------------------------------
-// multilingual-e5-small: entende português e inglês, gera vetores de 384
-// números e tem licença MIT. A versão quantizada (q8) tem ~120 MB.
+// snowflake-arctic-embed-m-v2.0: multilíngue (entende pergunta em português e
+// texto em inglês), vetores de 768 números, licença Apache-2.0. A versão
+// quantizada (q8) tem ~310 MB. Escolhido por medição: em 48 perguntas sobre um
+// material de curso real, pôs o arquivo certo entre os 5 primeiros em 42,
+// contra 29 do multilingual-e5-small (usado até a 1.2.0), 34 do e5-base e 36
+// do bge-m3 (que é quase o dobro do tamanho).
 // A revision fixa um commit do repositório do modelo: se alguém publicar uma
 // versão nova (ou maliciosa) no Hugging Face, ela não é baixada sem querer.
-const MODEL = 'Xenova/multilingual-e5-small';
-const MODEL_REVISION = '761b726dd34fb83930e26aab4e9ac3899aa1fa78';
+const MODEL = 'Snowflake/snowflake-arctic-embed-m-v2.0';
+const MODEL_REVISION = '95c2741480856aa9666782eb4afe11959938017f';
 // Muda quando o formato do índice, o modelo ou o corte em trechos mudam: o
 // índice antigo é refeito. 2: trechos cortados nos títulos Markdown (1.2.0).
-const INDEX_VERSION = 2;
+// 3: modelo arctic-embed e cabeçalho (arquivo e seção) em cada trecho (1.3.0).
+const INDEX_VERSION = 3;
 const INDEX_FILE = 'indice-semantico.json';
 export const SEMANTIC_TYPES: Tipo[] = ['anotacoes', 'pdf'];
 // ~800 caracteres por trecho: grande o bastante para ter contexto, pequeno o
@@ -59,13 +64,18 @@ const CHUNK_CHARS = 800;
 // Uma seção mais curta que isso se junta à seguinte, em vez de virar um trecho
 // minúsculo (medido: 100 dá o mesmo acerto com mais trechos; 400 piora).
 const MIN_CHUNK_CHARS = 200;
-const BATCH_SIZE = 16;
+// Lotes pequenos: o motor de inferência (onnxruntime-node) roda cada lote no
+// thread principal e congela o servidor enquanto calcula. Com 8 trechos, cada
+// congelamento dura poucos décimos de segundo (veja pedidosPendentes, no 6.4).
+const BATCH_SIZE = 8;
 const MAX_SEMANTIC_RESULTS = 8;
 const MAX_SEMANTIC_PER_FILE = 2;
 // O índice é verificado de novo (arquivos novos/alterados) no máximo a cada 5 min.
 const REFRESH_MS = 5 * 60_000;
 
-export type Trecho = { linha: number; pagina?: number; texto: string; alertas: string[] };
+// secao: os títulos em vigor no começo do trecho ("Aula 7 > ReAct"). Não aparece
+// na resposta: só entra no cabeçalho usado para calcular o vetor (6.3).
+export type Trecho = { linha: number; pagina?: number; secao?: string; texto: string; alertas: string[] };
 export type ResultadoSemantico = Resultado & { similaridade: number };
 type Embedder = (texts: string[]) => Promise<number[][]>;
 type ArquivoIndexado = { mtimeMs: number; size: number; trechos: (Trecho & { vetor: string })[] };
@@ -77,8 +87,9 @@ type ArquivoIndexado = { mtimeMs: number; size: number; trechos: (Trecho & { vet
 // só é carregada quando SEMANTIC_SEARCH=true. Se não estiver instalada, o resto
 // do servidor funciona normalmente.
 //
-// O modelo e5 foi treinado com prefixos: "query: " para perguntas e
-// "passage: " para trechos. Sem eles a qualidade cai.
+// O modelo foi treinado com o prefixo "query: " nas perguntas (e nada nos
+// trechos), e com o vetor do primeiro token (pooling "cls"). É o que o cartão
+// do modelo recomenda; sem isso a qualidade cai.
 let embedderPromise: Promise<Embedder> | undefined;
 
 // Carrega o modelo uma única vez e devolve a função que transforma textos em
@@ -92,11 +103,16 @@ function loadEmbedder(): Promise<Embedder> {
         // Depois ele fica em MODELS_DIR e é lido do disco. Seus arquivos nunca
         // são enviados: os vetores são calculados aqui, localmente.
         env.cacheDir = config.modelsDir;
+        // Só erros no log (40 = LogLevel.ERROR, desde a 4.3.1). O modelo usa uma
+        // arquitetura ("gte") que a biblioteca roda pelo caminho genérico e
+        // avisa a cada início ("Unknown model class"); o aviso não muda nada no
+        // resultado (vetores conferidos) e só assustaria no log do cliente.
+        env.logLevel = 40;
         const extractor = await pipeline('feature-extraction', MODEL, { dtype: 'q8', revision: MODEL_REVISION });
         return async (texts: string[]) => {
-            // mean pooling + normalize: um vetor de tamanho 1 por texto, o que
+            // pooling cls + normalize: um vetor de tamanho 1 por texto, o que
             // permite comparar dois vetores com um simples produto escalar (6.5).
-            const output = await extractor(texts, { pooling: 'mean', normalize: true });
+            const output = await extractor(texts, { pooling: 'cls', normalize: true });
             return output.tolist() as number[][];
         };
     })();
@@ -120,15 +136,20 @@ export function dividirEmTrechos(sections: { pagina?: number; lines: string[] }[
         let tamanho = 0;
         let inicio = 1;
         let emBlocoDeCodigo = false;
+        // Títulos em vigor: o primeiro "# " do arquivo e a pilha de "##", "###"...
+        let h1 = '';
+        let subtitulos: string[] = [];
+        let secao = '';
         const fechar = () => {
             const texto = atual.join('\n').trim();
             // Trechos quase vazios (só "---" ou espaços) não ajudam a busca.
-            if (texto.replace(/\s/g, '').length >= 20) trechos.push({ linha: inicio, pagina, texto });
+            if (texto.replace(/\s/g, '').length >= 20) trechos.push({ linha: inicio, pagina, ...(secao ? { secao } : {}), texto });
             atual = [];
             tamanho = 0;
         };
         for (const [index, line] of lines.entries()) {
             if (/^\s*(```|~~~)/.test(line)) emBlocoDeCodigo = !emBlocoDeCodigo;
+            const titulo = !emBlocoDeCodigo && /^#{1,6}\s+\S/.test(line);
             // Uma linha maior que um trecho (um parágrafo inteiro do Obsidian)
             // vira vários trechos. Sem isso, o modelo de embeddings, que lê no
             // máximo ~512 tokens, ignoraria em silêncio o resto do parágrafo.
@@ -136,6 +157,7 @@ export function dividirEmTrechos(sections: { pagina?: number; lines: string[] }[
                 fechar();
                 for (const pedaco of partirLinha(line)) {
                     inicio = index + 1;
+                    secao = [h1, ...subtitulos.filter(Boolean)].join(' > ');
                     atual = [pedaco];
                     fechar();
                 }
@@ -146,8 +168,15 @@ export function dividirEmTrechos(sections: { pagina?: number; lines: string[] }[
             // misturavam duas seções, e o vetor deles ficava uma média dos dois
             // assuntos. Seção curta demais se junta à seguinte. Dentro de bloco
             // de código, "# comentário" não é título.
-            if (!emBlocoDeCodigo && /^#{1,6}\s/.test(line) && tamanho >= MIN_CHUNK_CHARS) fechar();
-            if (!atual.length) inicio = index + 1;
+            if (titulo && tamanho >= MIN_CHUNK_CHARS) fechar();
+            if (titulo) {
+                const nivel = line.match(/^#+/)![0].length;
+                const texto = line.replace(/^#+\s*/, '').trim();
+                // Um segundo "# " no arquivo começa outra parte: os subtítulos zeram.
+                if (nivel === 1) { if (!h1) h1 = texto; else subtitulos = []; }
+                else { subtitulos = subtitulos.slice(0, nivel - 2); subtitulos[nivel - 2] = texto; }
+            }
+            if (!atual.length) { inicio = index + 1; secao = [h1, ...subtitulos.filter(Boolean)].join(' > '); }
             tamanho += (atual.length ? 1 : 0) + line.length;
             atual.push(line);
             if (tamanho >= CHUNK_CHARS) fechar();
@@ -155,6 +184,16 @@ export function dividirEmTrechos(sections: { pagina?: number; lines: string[] }[
         fechar();
     }
     return trechos;
+}
+
+// O texto que vira vetor: o trecho com um cabeçalho na frente, com o nome do
+// arquivo (as 3 últimas partes do caminho), a página (PDF) e os títulos em
+// vigor. Um trecho no meio de "aula07-arquiteturas-cognitivas/README.md" não
+// diz que fala de ReAct; o cabeçalho diz. Medido num material real: +0,07 de
+// MRR. O cabeçalho só entra no vetor; a resposta mostra o trecho como está.
+export function textoParaVetor(arquivo: string, t: { pagina?: number; secao?: string; texto: string }): string {
+    const nome = arquivo.split(sep).slice(-3).join('/');
+    return `${nome}${t.pagina ? ` (p. ${t.pagina})` : ''}${t.secao ? ` — ${t.secao}` : ''}\n${t.texto}`;
 }
 
 // Corta uma linha longa em pedaços de até CHUNK_CHARS, de preferência no fim de
@@ -218,6 +257,26 @@ async function salvarIndice(): Promise<void> {
     await gravarAtomico(join(config.dataDir, INDEX_FILE), JSON.stringify(dados));
 }
 
+// Prioridade para o cliente: enquanto um pedido dele (tool, resource, prompt,
+// autocompletar) espera resposta, a indexação pausa entre os lotes. Sem isso,
+// cada lote congela o servidor (o motor de inferência roda no thread
+// principal) e uma busca, que lê ~1.700 arquivos com uma espera em cada um,
+// ficava presa atrás dos lotes: medido num material real, mais de 60 s durante
+// a primeira indexação. Quem registra os pedidos é o transporte (index.ts).
+// Um pedido sem resposta (cancelado pelo cliente) deixa de contar depois de
+// PEDIDO_MAX_MS, para a indexação nunca ficar parada para sempre.
+const PEDIDO_MAX_MS = 60_000;
+const pedidosPendentes = new Map<string | number, number>();
+export function pedidoChegou(id: string | number): void { pedidosPendentes.set(id, Date.now()); }
+export function pedidoRespondido(id: string | number): void { pedidosPendentes.delete(id); }
+async function esperarBuscas(): Promise<void> {
+    for (;;) {
+        for (const [id, inicio] of pedidosPendentes) if (Date.now() - inicio > PEDIDO_MAX_MS) pedidosPendentes.delete(id);
+        if (!pedidosPendentes.size) return;
+        await new Promise(resolve => setTimeout(resolve, 25));
+    }
+}
+
 // Percorre os arquivos e processa só o que é novo ou mudou (data e tamanho).
 // Roda em segundo plano: o servidor continua respondendo enquanto isso.
 async function construirIndice(): Promise<void> {
@@ -236,9 +295,12 @@ async function construirIndice(): Promise<void> {
     // Vetor já calculado para cada texto: material de curso costuma ter cópias
     // (a mesma aula em duas pastas), e um texto idêntico gera o mesmo vetor.
     // Reaproveitar evita rodar o modelo de novo, que é a parte lenta.
+    // A chave é o texto com o cabeçalho (o que vira vetor): cópias com o mesmo
+    // nome final e os mesmos títulos reaproveitam o vetor.
     const porTexto = new Map<string, string>();
-    for (const dados of indice.values()) for (const t of dados.trechos) porTexto.set(t.texto, t.vetor);
+    for (const [arquivo, dados] of indice) for (const t of dados.trechos) porTexto.set(textoParaVetor(arquivo, t), t.vetor);
     for (const file of arquivos) {
+        await esperarBuscas();
         const arquivo = relative(config.notesDir, file);
         const info = await stat(file).catch(() => undefined);
         const anterior = indice.get(arquivo);
@@ -250,13 +312,14 @@ async function construirIndice(): Promise<void> {
                 return { ...t, texto: text, alertas };
             });
             // Só os textos ainda sem vetor passam pelo modelo, em lotes.
-            const faltando = [...new Set(trechos.map(t => t.texto).filter(texto => !porTexto.has(texto)))];
+            const faltando = [...new Set(trechos.map(t => textoParaVetor(arquivo, t)).filter(texto => !porTexto.has(texto)))];
             for (let i = 0; i < faltando.length; i += BATCH_SIZE) {
+                await esperarBuscas();
                 const lote = faltando.slice(i, i + BATCH_SIZE);
-                const vetoresLote = await embed(lote.map(texto => `passage: ${texto}`));
+                const vetoresLote = await embed(lote);
                 lote.forEach((texto, j) => porTexto.set(texto, toBase64(vetoresLote[j])));
             }
-            const novos = trechos.map(t => ({ ...t, vetor: porTexto.get(t.texto)! }));
+            const novos = trechos.map(t => ({ ...t, vetor: porTexto.get(textoParaVetor(arquivo, t))! }));
             indice.set(arquivo, { mtimeMs: info.mtimeMs, size: info.size, trechos: novos });
             vetores.delete(arquivo);
             // Salva de tempos em tempos: se o servidor for encerrado no meio, o

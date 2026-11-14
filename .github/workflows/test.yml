@@ -52,7 +52,7 @@ jobs:
       - run: npm run test:pack
 
   # Busca semântica com o modelo de verdade (PASSO 6). Fica num job separado
-  # porque baixa ~145 MB; o cache guarda o modelo entre as execuções.
+  # porque baixa ~310 MB; o cache guarda o modelo entre as execuções.
   semantic:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: .modelos
-          key: modelo-multilingual-e5-small-761b726d-${{ runner.os }}
+          key: modelo-snowflake-arctic-embed-m-v2.0-95c27414-${{ runner.os }}
       - run: npm ci
       - run: npm run test:semantic
         env:
