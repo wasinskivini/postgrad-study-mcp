@@ -43,7 +43,7 @@ Para atualizar: `git pull && npm install` e reinicie o servidor. Com o código-f
 | `npm test` | Roda os testes de integração |
 | `npm run typecheck` | Verifica os tipos com `tsc` (o Node só remove os tipos, não os checa) |
 | `npm run test:dev` | Testes em modo watch |
-| `npm run test:semantic` | Testes da busca semântica e a avaliação das buscas, com o modelo de verdade (baixa ~145 MB na primeira vez) |
+| `npm run test:semantic` | Testes da busca semântica e a avaliação das buscas, com o modelo de verdade (baixa ~310 MB na primeira vez) |
 | `npm run test:pack` | Gera o pacote do npm, instala numa pasta vazia e sobe o servidor por ele |
 | `npm run mcp:inspect` | Abre o MCP Inspector usando as anotações de exemplo de `tests/fixtures` |
 

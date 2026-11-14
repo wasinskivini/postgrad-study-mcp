@@ -80,7 +80,7 @@ export const config = {
     includePdf: process.env.INCLUDE_PDF !== 'false',
     // Busca semântica (PASSO 6) fica DESLIGADA, a menos que seja exatamente "true".
     semanticSearch: process.env.SEMANTIC_SEARCH === 'true',
-    // Onde o modelo de embeddings é guardado depois do download (~145 MB, uma vez só).
+    // Onde o modelo de embeddings é guardado depois do download (~310 MB, uma vez só).
     modelsDir: resolve(process.env.MODELS_DIR ?? join(dataDir, 'modelos')),
 };
 

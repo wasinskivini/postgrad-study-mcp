@@ -11,7 +11,7 @@
 | Parte | Onde roda | Envia seu material para fora? |
 |---|---|---|
 | Este servidor (busca literal, leitura, dúvidas, progresso) | No seu computador | Não |
-| Busca por significado (modelo `multilingual-e5-small`) | No seu computador | Não. Só baixa o modelo uma vez do Hugging Face |
+| Busca por significado (modelo `snowflake-arctic-embed-m-v2.0`) | No seu computador | Não. Só baixa o modelo uma vez do Hugging Face |
 | O modelo do seu cliente MCP (Copilot, no caso do VS Code) | Na nuvem | **Sim**, apenas os trechos que as tools devolvem |
 
 O modelo da busca por significado não é um LLM de conversa: ele só transforma texto em números para comparar significados, e isso acontece localmente. O que sai do computador é o resultado que o Copilot lê para responder, como acontece com qualquer arquivo que ele abre.

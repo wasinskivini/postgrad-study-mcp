@@ -6,7 +6,7 @@
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
-import { dividirEmTrechos, fundir, similaridade } from '../src/semantic.ts'
+import { dividirEmTrechos, fundir, similaridade, textoParaVetor } from '../src/semantic.ts'
 import { detectInjection, redactSecrets } from '../src/safety.ts'
 import { config, janela, paraComparar, parsePageRange, semCaminhos, semFrontmatter, tentarDeNovo } from '../src/service.ts'
 import { homedir } from 'node:os'
@@ -94,6 +94,28 @@ describe('busca semântica: trechos por seção', () => {
     it('should not treat a comment inside a code block as a heading', () => {
         const trechos = dividirEmTrechos([{ lines: [paragrafo('build'), '```bash', '# instala as dependências', 'npm install', '```', 'Depois rode os testes.'] }])
         assert.strictEqual(trechos.length, 1)
+    })
+})
+
+describe('busca semântica: cabeçalho do trecho', () => {
+    const paragrafo = (assunto: string) => `Texto de estudo sobre ${assunto}, `.repeat(12).trim()
+
+    it('should record the headings in force at the start of each chunk', () => {
+        const trechos = dividirEmTrechos([{ lines: ['# Aula 7', paragrafo('intro'), '## ReAct', paragrafo('react'), '### Observar', paragrafo('observar'), '## Reflexão', paragrafo('reflexao')] }])
+        assert.deepStrictEqual(trechos.map(t => t.secao), ['Aula 7', 'Aula 7 > ReAct', 'Aula 7 > ReAct > Observar', 'Aula 7 > Reflexão'])
+    })
+
+    it('should ignore headings inside code blocks and reset subheadings on a new top heading', () => {
+        const trechos = dividirEmTrechos([{ lines: ['# Parte 1', paragrafo('intro'), '## Docker', paragrafo('docker'), '```bash', '# instala', '```', '# Parte 2', paragrafo('parte dois')] }])
+        // "# instala" está dentro do bloco de código: não vira título nem corta.
+        // O segundo "# " zera o "Docker", e o primeiro título do arquivo fica.
+        assert.deepStrictEqual(trechos.map(t => [t.linha, t.secao]), [[1, 'Parte 1'], [3, 'Parte 1 > Docker'], [8, 'Parte 1']])
+    })
+
+    it('should put file, page and headings in front of the text that becomes a vector', () => {
+        const arquivo = join('curso', 'modulo04', 'aula07', 'README.md')
+        assert.strictEqual(textoParaVetor(arquivo, { secao: 'Aula 7 > ReAct', texto: 'conteúdo' }), 'modulo04/aula07/README.md — Aula 7 > ReAct\nconteúdo')
+        assert.strictEqual(textoParaVetor(join('modulo03', 'aula.pdf'), { pagina: 2, texto: 'conteúdo' }), 'modulo03/aula.pdf (p. 2)\nconteúdo')
     })
 })
 
